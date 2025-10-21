@@ -15,14 +15,18 @@ module.exports = (sequelize) => {
         key: 'id',
       },
     },
-    movieId: {
+    mediaId: {
       type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    mediaType: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
   }, {
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['userId', 'movieId'] },
+      { unique: true, fields: ['userId', 'mediaId', 'mediaType'] },
     ],
   });
 

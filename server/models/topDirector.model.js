@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Rating = sequelize.define('Rating', {
+  const TopDirector = sequelize.define('TopDirector', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -15,30 +15,22 @@ module.exports = (sequelize) => {
         key: 'id',
       },
     },
-    mediaId: {
+    personId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    mediaType: {
-      type: DataTypes.STRING,
+    order: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-    },
-    score: {
-      type: DataTypes.FLOAT,
-      allowNull: false,
-      validate: {
-        min: 0.5,
-        max: 5,
-      },
     },
   }, {
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'mediaId', 'mediaType'],
+        fields: ['userId', 'personId'],
       },
     ],
   });
 
-  return Rating;
+  return TopDirector;
 };

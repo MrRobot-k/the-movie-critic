@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Like = sequelize.define('Like', {
+  const List = sequelize.define('List', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -11,26 +11,29 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users', // This is the table name
+        model: 'Users',
         key: 'id',
       },
     },
-    mediaId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    mediaType: {
+    name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    isNumbered: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isPublic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
   }, {
-    indexes: [ // Ensure a user can only like an item once
-      {
-        unique: true,
-        fields: ['userId', 'mediaId', 'mediaType']
-      }
-    ]
+    timestamps: true,
   });
 
-  return Like;
+  return List;
 };

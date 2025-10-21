@@ -1,423 +1,200 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import './styles.css';
-import AuthenticatedHeader from './components/AuthenticatedHeader';
-import GuestHeader from './components/GuestHeader';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import WatchedPage from './pages/WatchedPage';
-import LikesPage from './pages/LikesPage';
-import WatchlistPage from './pages/WatchlistPage';
-const API_KEY = '3f46d222391647fd5bae513ec8dd5ca4';
-const BASE_URL = 'https://api.themoviedb.org/3';
+import React, { useState, useEffect } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import "./styles.css";
+import AuthenticatedHeader from "./components/AuthenticatedHeader";
+import GuestHeader from "./components/GuestHeader";
+import Footer from "./components/Footer";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import WatchedPage from "./pages/WatchedPage";
+import LikesPage from "./pages/LikesPage";
+import WatchlistPage from "./pages/WatchlistPage";
+import MyListsPage from "./pages/MyListsPage";
+import CreateListPage from "./pages/CreateListPage";
+import ViewListPage from "./pages/ViewListPage";
+import AllListsPage from "./pages/AllListsPage";
+import PersonDetailsPage from "./pages/PersonDetailsPage";
+import ProfilePage from "./pages/ProfilePage";
+import TopMoviesEditor from './pages/TopMoviesEditor';
+import TopDirectorsEditor from './pages/TopDirectorsEditor';
+import TopActorsEditor from './pages/TopActorsEditor';
+
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+
 export default function App() {
-  // --- STATE MANAGEMENT ---
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [query, setQuery] = useState('');
-  const [movies, setMovies] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [query, setQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedMovie, setSelectedMovie] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const moviesPerPage = 24;
-  const apiMoviesPerPage = 20;
+  const [currentMovieList, setCurrentMovieList] = useState(null);
+  const [currentMovieIndex, setCurrentMovieIndex] = useState(-1);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // --- DATA FETCHING ---
-  const fetchTopRatedMovies = async (page) => {
-    setLoading(true);
-    try {
-      const startIndex = (page - 1) * moviesPerPage;
-      const endIndex = startIndex + moviesPerPage;
-      const startApiPage = Math.floor(startIndex / apiMoviesPerPage) + 1;
-      const endApiPage = Math.ceil(endIndex / apiMoviesPerPage);
+  useEffect(() => {
+    const checkAuth = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+    checkAuth();
+  }, [location]);
 
-      const apiPromises = [];
-      for (let i = startApiPage; i <= endApiPage; i++) {
-        apiPromises.push(
-          fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&language=es-MX&sort_by=vote_average.desc&vote_count.gte=2000&page=${i}`)
-        );
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (query.trim()) {
+      setSearchQuery(query.trim());
+      if (location.pathname !== '/') {
+        navigate('/');
       }
-
-      const responses = await Promise.all(apiPromises);
-      const data = await Promise.all(responses.map(res => res.json()));
-
-      const allMovies = data.flatMap(d => d.results);
-      const totalMovies = data[0].total_results;
-      setTotalPages(Math.ceil(totalMovies / moviesPerPage));
-
-      const moviesForPage = allMovies.slice(startIndex % apiMoviesPerPage, (startIndex % apiMoviesPerPage) + moviesPerPage);
-      setMovies(moviesForPage);
-
-    } catch (error) {
-      console.error('Error fetching top rated movies:', error);
     }
-    setLoading(false);
   };
 
-  const searchMovies = async (searchQuery) => {
-    if (!searchQuery.trim()) {
-      fetchTopRatedMovies(currentPage);
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await fetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&language=es-MX&query=${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
-      setMovies(data.results || []);
-      setTotalPages(data.total_pages);
-    } catch (error) {
-      console.error('Error searching movies:', error);
-    }
-    setLoading(false);
+  const clearSearch = () => {
+    setQuery("");
+    setSearchQuery("");
   };
 
-  const getMovieDetails = async (movieId) => {
+  const getMovieDetails = async (id, mediaType, userScore, list = null, index = -1) => {
     try {
       const [detailsRes, creditsRes] = await Promise.all([
-        fetch(`${BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-MX`),
-        fetch(`${BASE_URL}/movie/${movieId}/credits?api_key=${API_KEY}&language=es-MX`)
+        fetch(`${import.meta.env.VITE_BASE_URL}/${mediaType}/${id}?api_key=${API_KEY}&language=es-MX`),
+        fetch(`${import.meta.env.VITE_BASE_URL}/${mediaType}/${id}/credits?api_key=${API_KEY}&language=es-MX`),
       ]);
       const details = await detailsRes.json();
       const credits = await creditsRes.json();
 
       setSelectedMovie({
         ...details,
-        director: credits.crew.find(person => person.job === 'Director'),
-        cast: credits.cast
+        director: credits.crew.find((person) => person.job === "Director"),
+        cast: credits.cast,
+        media_type: mediaType,
+        userScore,
       });
+
+      if (list) {
+        setCurrentMovieList(list);
+        setCurrentMovieIndex(index);
+      } else {
+        setCurrentMovieList(null);
+        setCurrentMovieIndex(-1);
+      }
     } catch (error) {
-      console.error('Error fetching movie details:', error);
+      console.error("Error fetching details:", error);
     }
   };
 
-  // --- EFFECTS ---
-  useEffect(() => {
-    fetchTopRatedMovies(currentPage);
-  }, [currentPage]);
+  const onCloseDetails = () => {
+    setSelectedMovie(null);
+    setCurrentMovieList(null);
+    setCurrentMovieIndex(-1);
+  };
+
+  const handleNavigateInModal = (direction) => {
+    if (!currentMovieList || currentMovieIndex === -1) return;
+
+    const newIndex = direction === 'next' ? currentMovieIndex + 1 : currentMovieIndex - 1;
+
+    if (newIndex >= 0 && newIndex < currentMovieList.length) {
+      const nextMovie = currentMovieList[newIndex];
+      getMovieDetails(nextMovie.id, nextMovie.media_type, nextMovie.userScore, currentMovieList, newIndex);
+    }
+  };
 
   useEffect(() => {
-    if (selectedMovie) {
-      document.body.classList.add('modal-open');
-    } else {
-      document.body.classList.remove('modal-open');
-    }
+    if (selectedMovie) document.body.classList.add("modal-open");
+    else document.body.classList.remove("modal-open");
   }, [selectedMovie]);
 
-    // --- HANDLERS ---
-
-    const handleSearch = (e) => {
-
-      e.preventDefault();
-
-      setCurrentPage(1);
-
-      searchMovies(query);
-
-    };
-
-    
-
-    const handlePageChange = (newPage) => {
-
-      if (newPage > 0 && newPage <= totalPages) {
-
-        setCurrentPage(newPage);
-
-      }
-
-    };
-
-  
-
-    const onRateMovie = async (movieId, score) => {
-
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-
-        console.error('No hay token de autenticación disponible.');
-
-        return;
-
-      }
-
-  
-
-      try {
-
-        const response = await fetch(`http://localhost:5000/api/movies/${movieId}/rate`, {
-
-          method: 'POST',
-
-          headers: {
-
-            'Content-Type': 'application/json',
-
-            'Authorization': `Bearer ${token}`,
-
-          },
-
-          body: JSON.stringify({ score }),
-
-        });
-
-  
-
-        if (!response.ok) {
-
-          const errorData = await response.json();
-
-          throw new Error(errorData.error || 'Error al guardar la calificación.');
-
-        }
-
-  
-
-        // Opcional: Actualizar la UI o mostrar un mensaje de éxito
-
-        console.log(`Película ${movieId} calificada con ${score} estrellas.`);
-
-  
-
-      } catch (error) {
-
-                console.error('Error al calificar la película:', error.message);
-
-              }
-
-            };
-
-        
-
-            const onToggleLike = async (movieId, isLiked) => {
-
-              const token = localStorage.getItem('token');
-
-              if (!token) {
-
-                console.error('No hay token de autenticación disponible.');
-
-                return;
-
-              }
-
-        
-
-              try {
-
-                const response = await fetch(`http://localhost:5000/api/movies/${movieId}/like`, {
-
-                  method: 'POST',
-
-                  headers: {
-
-                    'Content-Type': 'application/json',
-
-                    'Authorization': `Bearer ${token}`,
-
-                  },
-
-                });
-
-        
-
-                if (!response.ok) {
-
-                  const errorData = await response.json();
-
-                  throw new Error(errorData.error || 'Error al alternar el estado de Me gusta.');
-
-                }
-
-        
-
-                console.log(`Película ${movieId} ${isLiked ? 'marcada como Me gusta' : 'eliminada de Me gusta'}.`);
-
-        
-
-              } catch (error) {
-
-                                console.error('Error al alternar Me gusta:', error.message);
-
-                              }
-
-                            };
-
-                
-
-                            const onToggleWatchlist = async (movieId, isWatchlisted) => {
-
-                              const token = localStorage.getItem('token');
-
-                              if (!token) {
-
-                                console.error('No hay token de autenticación disponible.');
-
-                                return;
-
-                              }
-
-                
-
-                              try {
-
-                                const response = await fetch(`http://localhost:5000/api/movies/${movieId}/watchlist`, {
-
-                                  method: 'POST',
-
-                                  headers: {
-
-                                    'Content-Type': 'application/json',
-
-                                    'Authorization': `Bearer ${token}`,
-
-                                  },
-
-                                });
-
-                
-
-                                if (!response.ok) {
-
-                                  const errorData = await response.json();
-
-                                  throw new Error(errorData.error || 'Error al alternar el estado de Watchlist.');
-
-                                }
-
-                
-
-                                console.log(`Película ${movieId} ${isWatchlisted ? 'añadida a la Watchlist' : 'eliminada de la Watchlist'}.`);
-
-                
-
-                              } catch (error) {
-
-                                console.error('Error al alternar Watchlist:', error.message);
-
-                              }
-
-                            };
-
-                
-
-                            return (
-
-                              <div>
-
-                                <header>
-
-                  {isAuthenticated ? (
-
-                    <AuthenticatedHeader query={query} setQuery={setQuery} handleSearch={handleSearch} />
-
-                  ) : (
-
-                    <GuestHeader />
-
-                  )}
-
-                </header>
-
-        
-
-                <Routes>
-
-                  <Route 
-
-                    path="/"
-
-                    element={(
-
-                      <HomePage 
-
-                        movies={movies}
-
-                        loading={loading}
-
-                        currentPage={currentPage}
-
-                        totalPages={totalPages}
-
-                        handlePageChange={handlePageChange}
-
-                        getMovieDetails={getMovieDetails}
-
-                        selectedMovie={selectedMovie}
-
-                        onCloseDetails={() => setSelectedMovie(null)}
-
-                        isAuthenticated={isAuthenticated}
-
-                                                onRateMovie={onRateMovie}
-
-                                                onToggleLike={onToggleLike}
-
-                                                onToggleWatchlist={onToggleWatchlist}
-
-                                              />
-
-                                            )}
-
-                                          />
-
-                                                  <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
-
-                                                  <Route path="/register" element={<RegisterPage />} />
-
-                                                  <Route path="/visto" element={<WatchedPage />} />
-
-                                                  <Route path="/likes" element={(
-
-                                            <LikesPage
-
-                                              getMovieDetails={getMovieDetails}
-
-                                              selectedMovie={selectedMovie}
-
-                                              onCloseDetails={() => setSelectedMovie(null)}
-
-                                              isAuthenticated={isAuthenticated}
-
-                                              onRateMovie={onRateMovie}
-
-                                              onToggleLike={onToggleLike}
-
-                                                                    onToggleWatchlist={onToggleWatchlist}
-
-                                                                  />
-
-                                                                )} />
-
-                                                                <Route path="/watchlist" element={(
-
-                                                                  <WatchlistPage
-
-                                                                    getMovieDetails={getMovieDetails}
-
-                                                                    selectedMovie={selectedMovie}
-
-                                                                    onCloseDetails={() => setSelectedMovie(null)}
-
-                                                                    isAuthenticated={isAuthenticated}
-
-                                                                    onRateMovie={onRateMovie}
-
-                                                                    onToggleLike={onToggleLike}
-
-                                                                    onToggleWatchlist={onToggleWatchlist}
-
-                                                                  />
-
-                                                                )} />
-
-                                              
-
-                                                              </Routes>
-
-              </div>
-
-            );
-
-          }
+  const onRateMovie = async (mediaId, mediaType, score) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await fetch(`http://localhost:3000/api/media/${mediaId}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ score, mediaType }),
+      });
+    } catch (error) {
+      console.error("Error al calificar:", error.message);
+    }
+  };
+
+  const onToggleLike = async (id, mediaType) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await fetch(`http://localhost:3000/api/media/${id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mediaType }),
+      });
+    } catch (error) {
+      console.error("Error al alternar Me gusta:", error.message);
+    }
+  };
+
+  const onToggleWatchlist = async (mediaId, mediaType) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await fetch(`http://localhost:3000/api/media/${mediaId}/watchlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mediaType }),
+      });
+    } catch (error) {
+      console.error("Error al alternar Watchlist:", error.message);
+    }
+  };
+
+  const modalProps = {
+    getMovieDetails,
+    selectedMovie,
+    onCloseDetails,
+    isAuthenticated,
+    onRateMovie,
+    onToggleLike,
+    onToggleWatchlist,
+    movieList: currentMovieList,
+    currentIndex: currentMovieIndex,
+    onNavigate: handleNavigateInModal,
+  };
+
+  return (
+    <div>
+      <header>
+        {isAuthenticated ? (
+          <AuthenticatedHeader
+            query={query}
+            setQuery={setQuery}
+            handleSearch={handleSearch}
+            setIsAuthenticated={setIsAuthenticated}
+          />
+        ) : (
+          <GuestHeader />
+        )}
+      </header>
+
+      <Routes>
+        <Route path="/" element={<HomePage {...modalProps} query={searchQuery} clearSearch={clearSearch} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/visto" element={<WatchedPage {...modalProps} />} />
+        <Route path="/likes" element={<LikesPage {...modalProps} />} />
+        <Route path="/watchlist" element={<WatchlistPage {...modalProps} />} />
+        <Route path="/mis-listas" element={<MyListsPage />} />
+        <Route path="/crear-lista" element={<CreateListPage />} />
+        <Route path="/editar-lista/:listId" element={<CreateListPage />} />
+        <Route path="/listas" element={<AllListsPage />} />
+        <Route path="/lista/:listId" element={<ViewListPage {...modalProps} />} />
+        <Route path="/person/:personId/:role" element={<PersonDetailsPage {...modalProps} />} />
+        <Route path="/profile" element={<ProfilePage {...modalProps} />} />
+        <Route path="/top-movies-editor" element={<TopMoviesEditor />} />
+        <Route path="/top-directors-editor" element={<TopDirectorsEditor />} />
+        <Route path="/top-actors-editor" element={<TopActorsEditor />} />
+      </Routes>
+
+      <Footer />
+    </div>
+  );
+}

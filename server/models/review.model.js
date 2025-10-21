@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Rating = sequelize.define('Rating', {
+  const Review = sequelize.define('Review', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -11,7 +11,7 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users', // Nombre de la tabla de usuarios
+        model: 'Users',
         key: 'id',
       },
     },
@@ -23,22 +23,19 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    score: {
-      type: DataTypes.FLOAT,
+    reviewText: {
+      type: DataTypes.TEXT,
       allowNull: false,
-      validate: {
-        min: 0.5,
-        max: 5,
-      },
     },
   }, {
+    timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'mediaId', 'mediaType'],
-      },
-    ],
+        fields: ['userId', 'mediaId', 'mediaType']
+      }
+    ]
   });
 
-  return Rating;
+  return Review;
 };

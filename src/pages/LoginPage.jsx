@@ -12,7 +12,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/login', {
+      const response = await fetch('http://localhost:3000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,8 +27,10 @@ const LoginPage = ({ setIsAuthenticated }) => {
       }
 
       // Si el inicio de sesión es exitoso
+      console.log('Login successful:', data);
       localStorage.setItem('token', data.token); // Guardar el token JWT
-      localStorage.setItem('userId', data.user.id); // Guardar el ID del usuario
+      localStorage.setItem('userId', data.user.id); // Guardar el ID del usuario en localStorage
+      localStorage.setItem('username', data.user.username); // Guardar el nombre de usuario en localStorage
       setIsAuthenticated(true); // Actualiza el estado de autenticación en App.jsx
       navigate('/'); // Redirige a la página principal
 

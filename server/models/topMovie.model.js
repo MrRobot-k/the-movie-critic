@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Rating = sequelize.define('Rating', {
+  const TopMovie = sequelize.define('TopMovie', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -23,13 +23,9 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    score: {
-      type: DataTypes.FLOAT,
+    order: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-      validate: {
-        min: 0.5,
-        max: 5,
-      },
     },
   }, {
     indexes: [
@@ -40,5 +36,5 @@ module.exports = (sequelize) => {
     ],
   });
 
-  return Rating;
+  return TopMovie;
 };

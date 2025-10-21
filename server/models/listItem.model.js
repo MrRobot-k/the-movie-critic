@@ -1,19 +1,20 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Rating = sequelize.define('Rating', {
+  const ListItem = sequelize.define('ListItem', {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    userId: {
+    listId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Users', // Nombre de la tabla de usuarios
+        model: 'Lists',
         key: 'id',
       },
+      onDelete: 'CASCADE',
     },
     mediaId: {
       type: DataTypes.INTEGER,
@@ -23,22 +24,19 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    score: {
-      type: DataTypes.FLOAT,
+    order: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-      validate: {
-        min: 0.5,
-        max: 5,
-      },
     },
   }, {
+    timestamps: false,
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'mediaId', 'mediaType'],
-      },
-    ],
+        fields: ['listId', 'mediaId', 'mediaType']
+      }
+    ]
   });
 
-  return Rating;
+  return ListItem;
 };
