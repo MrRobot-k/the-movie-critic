@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Search, Plus, Trash2 } from 'lucide-react';
 
 const TopActorsEditor = () => {
   const [actors, setActors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +43,10 @@ const TopActorsEditor = () => {
         `https://api.themoviedb.org/3/search/person?api_key=${import.meta.env.VITE_TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es-MX`
       );
       const data = await response.json();
-      setSearchResults(data.results || []);
+      const actors = data.results.filter(
+        person => person.known_for_department === 'Acting' && person.profile_path
+      );
+      setSearchResults(actors);
     } catch (error) {
       console.error('Error searching actors:', error);
     } finally {
@@ -77,19 +82,15 @@ const TopActorsEditor = () => {
     setActors(prev => prev.filter(actor => actor.id !== actorId));
   };
 
-  const moveActor = (index, direction) => {
-    const newActors = [...actors];
-    const newIndex = index + direction;
-    
-    if (newIndex >= 0 && newIndex < newActors.length) {
-      [newActors[index], newActors[newIndex]] = [newActors[newIndex], newActors[index]];
-      setActors(newActors);
-    }
-  };
+
 
   const saveTopActors = async () => {
+    setSaving(true);
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setSaving(false);
+      return;
+    }
 
     try {
       const response = await fetch('http://localhost:3000/api/user/top-actors', {
@@ -104,138 +105,149 @@ const TopActorsEditor = () => {
       if (response.ok) {
         alert('Top actores guardado exitosamente!');
         navigate('/profile');
-      } else alert('Error al guardar los actores.');
+      } else {
+        alert('Error al guardar los actores.');
+      }
     } catch (error) {
       console.error('Error saving top actors:', error);
       alert('Error al guardar los actores.');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">Mi Top 10 Actores/Actrices</h1>
-          <button
-            onClick={() => navigate('/profile')}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
-          >
-            Volver al Perfil
-          </button>
-        </div>
+    <div className="container my-5">
+      <div className="d-flex align-items-center mb-4">
+        <button
+          className="btn btn-outline-light me-3"
+          onClick={() => navigate('/profile')}
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="fw-bold mb-0">Editar Mis 10 Mejores Actores/Actrices</h1>
+      </div>
 
-        {/* Búsqueda */}
-        <div className="mb-6">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              searchActors(e.target.value);
-            }}
-            placeholder="Buscar actores o actrices..."
-            className="w-full p-3 bg-gray-700 text-white rounded-lg"
-          />
-        </div>
-
-        {/* Resultados de búsqueda */}
-        {loading && <div className="text-white text-center">Buscando...</div>}
-        {searchResults.length > 0 && (
-          <div className="mb-6 bg-gray-800 rounded-lg p-4">
-            <h3 className="text-xl font-semibold text-white mb-3">Resultados de búsqueda:</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {searchResults.slice(0, 6).map(actor => (
-                <div key={actor.id} className="flex items-center bg-gray-700 p-3 rounded">
-                  <img
-                    src={actor.profile_path ? `https://image.tmdb.org/t/p/w92${actor.profile_path}` : '/placeholder-profile.svg'}
-                    alt={actor.name}
-                    className="w-12 h-12 rounded-full object-cover mr-3"
-                  />
-                  <span className="text-white flex-grow">{actor.name}</span>
-                  <button
-                    onClick={() => addActor(actor)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Agregar
-                  </button>
-                </div>
-              ))}
+      {/* Búsqueda */}
+      <div className="card mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+        <div className="card-body">
+          <form onSubmit={(e) => { e.preventDefault(); searchActors(searchTerm); }}>
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Buscar actores o actrices..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ backgroundColor: '#2c3440', border: '1px solid #454d5d', color: 'white' }}
+              />
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={loading}
+              >
+                <Search size={20} />
+              </button>
             </div>
-          </div>
-        )}
+          </form>
 
-        {/* Lista actual */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">
-            Tu Top {actors.length}/10
-          </h3>
-          
+          {/* Resultados de búsqueda */}
+          {searchResults.length > 0 && (
+            <div className="mt-3">
+              <h6 className="text-light mb-3">Resultados de búsqueda:</h6>
+              <div className="row g-2">
+                {searchResults.map(actor => (
+                  <div key={actor.id} className="col-6 col-md-4 col-lg-3">
+                    <div className="card text-center" style={{ backgroundColor: '#2c3440', border: '1px solid #454d5d' }}>
+                      <img
+                        src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : '/placeholder-profile.svg'}
+                        alt={actor.name}
+                        className="card-img-top rounded-circle mx-auto mt-3"
+                        style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                      />
+                      <div className="card-body">
+                        <h6 className="card-title text-light small mb-1">
+                          {actor.name}
+                        </h6>
+                        <button
+                          className="btn btn-sm btn-success w-100"
+                          onClick={() => addActor(actor)}
+                        >
+                          <Plus size={14} className="me-1" />
+                          Agregar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top 10 Actual */}
+      <div className="card" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+        <div className="card-header">
+          <h5 className="mb-0 text-light">Mi Top 10 Actores/Actrices</h5>
+          <p className="text-muted small mb-0">
+            {actors.length}/10 actores
+          </p>
+        </div>
+        <div className="card-body">
           {actors.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">
-              Comienza a agregar actores y actrices a tu top 10.
-            </p>
+            <div className="text-center py-4">
+              <p className="text-muted">No hay actores en tu Top 10. Busca y agrega algunos!</p>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="row g-3">
               {actors.map((actor, index) => (
-                <div key={actor.id} className="flex items-center bg-gray-700 p-4 rounded">
-                  <div className="flex items-center flex-grow">
-                    <span className="text-yellow-400 font-bold w-8 text-lg">
-                      #{index + 1}
-                    </span>
+                <div key={actor.id} className="col-12 col-md-6">
+                  <div
+                    className="d-flex align-items-center p-3 rounded"
+                    style={{ backgroundColor: '#2c3440', border: '1px solid #454d5d' }}
+                  >
+                    <div className="me-3 text-center">
+                      <span className="badge bg-primary fs-6">#{index + 1}</span>
+                    </div>
                     <img
                       src={actor.profile_path ? `https://image.tmdb.org/t/p/w92${actor.profile_path}` : '/placeholder-profile.svg'}
                       alt={actor.name}
-                      className="w-16 h-16 rounded-full object-cover mx-4"
+                      className="rounded-circle me-3"
+                      style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                     />
-                    <div>
-                      <h4 className="text-white font-semibold text-lg">{actor.name}</h4>
-                      <p className="text-gray-400 text-sm">{actor.character}</p>
+                    <div className="flex-grow-1">
+                      <h6 className="text-light mb-1">{actor.name}</h6>
                     </div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
                     <button
-                      onClick={() => moveActor(index, -1)}
-                      disabled={index === 0}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      onClick={() => moveActor(index, 1)}
-                      disabled={index === actors.length - 1}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm"
-                    >
-                      ↓
-                    </button>
-                    <button
+                      className="btn btn-outline-danger btn-sm"
                       onClick={() => removeActor(actor.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
                     >
-                      Eliminar
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
 
-        {/* Botones de acción */}
-        <div className="flex justify-end space-x-4 mt-6">
-          <button
-            onClick={() => navigate('/profile')}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={saveTopActors}
-            disabled={actors.length === 0}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-6 py-2 rounded"
-          >
-            Guardar Top Actores
-          </button>
+
+          {/* Botones de acción */}
+          <div className="d-flex justify-content-between mt-4">
+            <button
+              className="btn btn-outline-light"
+              onClick={() => navigate('/profile')}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={saveTopActors}
+              disabled={saving || actors.length === 0}
+            >
+              {saving ? 'Guardando...' : 'Guardar Top 10'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

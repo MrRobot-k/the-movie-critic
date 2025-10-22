@@ -339,7 +339,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       <div className="row">
         {/* Columna izquierda - Información del usuario y estadísticas */}
         <div className="col-md-4 mb-5">
-          <div className="sticky-top" style={{ top: '20px' }}>
+          <div className="sticky-top" style={{ top: '20px', zIndex: 999 }}>
             {/* Información del usuario */}
             <div className="text-center mb-4">
               <div className="position-relative d-inline-block mb-3">
