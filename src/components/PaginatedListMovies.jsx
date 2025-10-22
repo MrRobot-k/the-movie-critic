@@ -115,12 +115,6 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [] }) =
                                   />
                                   {/* Assuming list.isNumbered is not available here, so not rendering the number overlay */}
               </div>
-              <p className="text-light small mt-2 mb-0 text-center">
-                {movie.title || movie.name}
-                {movie.original_title && movie.original_title !== (movie.title || movie.name) && movie.original_language !== 'es' && (
-                  <span className="d-block text-muted fst-italic" style={{ fontSize: '0.75em' }}>({movie.original_title})</span>
-                )}
-              </p>
             </div>
           ))}
         </div>

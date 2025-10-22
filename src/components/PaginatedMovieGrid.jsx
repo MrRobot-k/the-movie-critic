@@ -382,7 +382,7 @@ const PaginatedMovieGrid = ({ endpoint, title, isAuthenticated, onRateMovie, onT
         <div className="row g-1 poster-grid">
           {movies.map((movie) => (
             <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-                            <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.media_type, movie.userScore)}>                <img
+                                          <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>                <img
                   src={
                     movie.poster_path
                       ? `${IMAGE_BASE_URL}/w342${movie.poster_path}`
@@ -397,12 +397,6 @@ const PaginatedMovieGrid = ({ endpoint, title, isAuthenticated, onRateMovie, onT
                   </div>
                 )}
               </div>
-              <p className="text-light small mt-2 mb-0 text-center">
-                {movie.title || movie.name}
-                {movie.original_title && movie.original_title !== (movie.title || movie.name) && movie.original_language !== 'es' && (
-                  <span className="d-block text-muted fst-italic" style={{ fontSize: '0.75em' }}>({movie.original_title})</span>
-                )}
-              </p>
             </div>
           ))}
         </div>

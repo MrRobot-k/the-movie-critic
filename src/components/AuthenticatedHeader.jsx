@@ -6,6 +6,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   const [profilePicture, setProfilePicture] = useState(null);
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
+  const username = localStorage.getItem('username');
 
   useEffect(() => {
     const fetchProfilePicture = async () => {
@@ -18,8 +19,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         if (response.ok) {
           const userData = await response.json();
           setProfilePicture(userData.profilePicture ? `http://localhost:3000${userData.profilePicture}` : null);
-        } else {
-          console.error('Failed to fetch profile picture');
         }
       } catch (error) {
         console.error('Error fetching profile picture:', error);
@@ -37,86 +36,143 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
-      <div className="container-fluid">
-        <Link className="navbar-brand fs-4 fw-bold" to="/">
+    <nav style={{
+      backgroundColor: '#14181c',
+      borderBottom: '1px solid #2c3440',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      padding: '0.5rem 1rem'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        maxWidth: '100%',
+        gap: '1rem'
+      }}>
+        {/* Logo */}
+        <Link to="/" style={{
+          color: '#fff',
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          textDecoration: 'none',
+          whiteSpace: 'nowrap'
+        }}>
           The Movie Critic
         </Link>
 
-        <button 
-          className="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarNav"
+        {/* Listas link */}
+        <Link to="/listas" style={{
+          color: 'rgba(255, 255, 255, 0.8)',
+          textDecoration: 'none',
+          whiteSpace: 'nowrap'
+        }}>
+          Listas
+        </Link>
+
+        {/* Search form */}
+        <form onSubmit={handleSearch} style={{
+          flex: 1,
+          maxWidth: '500px',
+          margin: '0 auto'
+        }}>
+          <input 
+            type="search" 
+            placeholder="Buscar..." 
+            value={query} 
+            onChange={(e) => setQuery(e.target.value)} 
+            style={{
+              width: '100%',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#2c3440',
+              color: '#fff',
+              border: '1px solid #454d5d',
+              borderRadius: '0.25rem',
+              outline: 'none'
+            }}
+          />
+        </form>
+
+        {/* Profile dropdown */}
+        <div 
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setShowDropdown(true)}
+          onMouseLeave={() => setShowDropdown(false)}
         >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-3">
-            <li className="nav-item">
-              <Link className="nav-link" to="/listas">Listas</Link>
-            </li>
-          </ul>
-
-          <form className="d-flex mx-auto" onSubmit={handleSearch} style={{ maxWidth: '500px', width: '100%' }}>
-            <input 
-              type="search" 
-              className="form-control form-control-dark" 
-              placeholder="Buscar películas y series..." 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
+          <a 
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: 'rgba(255, 255, 255, 0.8)',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              gap: '0.5rem'
+            }}
+          >
+            <img 
+              src={profilePicture ? `${profilePicture}?t=${new Date().getTime()}` : '/placeholder-profile.svg'}
+              alt="Profile" 
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                objectFit: 'cover'
+              }}
             />
-          </form>
-
-          <ul className="navbar-nav ms-3">
-            <li 
-              className="nav-item dropdown"
-              onMouseEnter={() => setShowDropdown(true)}
-              onMouseLeave={() => setShowDropdown(false)}
-            >
-              <a 
-                className="nav-link dropdown-toggle d-flex align-items-center" 
-                href="#" 
-                role="button" 
-                aria-expanded={showDropdown}
-              >
-                {profilePicture ? (
-                  <img 
-                    src={`${profilePicture}?t=${new Date().getTime()}`} 
-                    alt="Profile" 
-                    className="rounded-circle me-2" 
-                    style={{ width: '30px', height: '30px', objectFit: 'cover' }} 
-                  />
-                ) : (
-                  <img 
-                    src="/placeholder-profile.svg" 
-                    alt="Profile" 
-                    className="rounded-circle me-2" 
-                    style={{ width: '30px', height: '30px', objectFit: 'cover' }} 
-                  />
-                )}
-                {username || 'Mi Perfil'}
-              </a>
-              <ul className={`dropdown-menu dropdown-menu-dark dropdown-menu-end ${showDropdown ? 'show' : ''}`}>
-                <li><Link className="dropdown-item" to="/profile">Perfil</Link></li>
-                <li><Link className="dropdown-item" to="/visto">Visto</Link></li>
-                <li><Link className="dropdown-item" to="/mis-listas">Mis Listas</Link></li>
-                <li><Link className="dropdown-item" to="/watchlist">Watchlist</Link></li>
-                <li><Link className="dropdown-item" to="/likes">Likes</Link></li>
-                <li><hr className="dropdown-divider" /></li>
-                <li>
-                  <button className="dropdown-item" onClick={handleLogout}>
-                    Cerrar Sesión
-                  </button>
-                </li>
-              </ul>
-            </li>
-          </ul>
+            {username || 'angel_eyes'}
+          </a>
+          
+          {showDropdown && (
+            <ul style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              backgroundColor: '#2c3440',
+              border: '1px solid #454d5d',
+              borderRadius: '0.25rem',
+              listStyle: 'none',
+              padding: '0.5rem 0',
+              margin: '0.5rem 0 0 0',
+              minWidth: '160px',
+              zIndex: 1000
+            }}>
+              <li><Link to="/profile" style={dropdownItemStyle}>Perfil</Link></li>
+              <li><Link to="/visto" style={dropdownItemStyle}>Visto</Link></li>
+              <li><Link to="/mis-listas" style={dropdownItemStyle}>Mis Listas</Link></li>
+              <li><Link to="/watchlist" style={dropdownItemStyle}>Watchlist</Link></li>
+              <li><Link to="/likes" style={dropdownItemStyle}>Likes</Link></li>
+              <li style={{ borderTop: '1px solid #454d5d', margin: '0.5rem 0' }}></li>
+              <li>
+                <button onClick={handleLogout} style={{
+                  ...dropdownItemStyle,
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}>
+                  Cerrar Sesión
+                </button>
+              </li>
+            </ul>
+          )}
         </div>
       </div>
     </nav>
   );
+};
+
+const dropdownItemStyle = {
+  display: 'block',
+  padding: '0.5rem 1rem',
+  color: '#fff',
+  textDecoration: 'none',
+  transition: 'background-color 0.2s'
 };
 
 export default AuthenticatedHeader;
