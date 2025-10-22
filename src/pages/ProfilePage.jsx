@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X } from 'lucide-react';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import PaginatedMovieGrid from '../components/PaginatedMovieGrid';
 import RatingDistributionChart from '../components/RatingDistributionChart';
-
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate }) => {
   const navigate = useNavigate();
+  const { userId: paramUserId } = useParams();
   const fileInputRef = useRef(null);
   const [username, setUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
@@ -27,38 +26,35 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const [error, setError] = useState('');
   const [isProfilePictureModalOpen, setIsProfilePictureModalOpen] = useState(false);
   const [stats, setStats] = useState({ watched: 0, likes: 0, reviews: 0, watchlist: 0 });
-  const userId = localStorage.getItem('userId');
-
+  const loggedInUserId = localStorage.getItem('userId');
+  const isOwnProfile = !paramUserId || paramUserId === loggedInUserId;
+  const userIdToFetch = isOwnProfile ? loggedInUserId : paramUserId;
   useEffect(() => {
-    if (!isAuthenticated || !userId) {
+    if (!isAuthenticated && isOwnProfile) {
       navigate('/login');
       return;
     }
-    setUsername(localStorage.getItem('username') || 'Usuario');
     fetchProfileData();
-  }, [isAuthenticated, userId, navigate]);
-
+  }, [isAuthenticated, userIdToFetch, navigate]);
   const fetchProfileData = async () => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
-    if (!userId || isNaN(Number(userId))) {
+    if (!userIdToFetch || isNaN(Number(userIdToFetch))) {
       setError('ID de usuario inválido.');
       setLoading(false);
       return;
     }
-
     try {
       // Fetch user profile
-      const userRes = await fetch(`http://localhost:3000/api/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` }, });
+      const userRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}`, { headers: { 'Authorization': `Bearer ${token}` }, });
       if (userRes.ok) {
         const userData = await userRes.json();
+        setUsername(userData.username);
         setProfilePicture(userData.profilePicture ? `http://localhost:3000${userData.profilePicture}` : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-
       // Fetch user ratings para el gráfico
-      const ratingsRes = await fetch(`http://localhost:3000/api/users/watched`, {
+      const ratingsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watched`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (ratingsRes.ok) {
@@ -66,15 +62,13 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setUserRatings(data.watchedMovies || []);
         setStats(prev => ({ ...prev, watched: data.watchedMovies.length }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-
-      const likesStatsRes = await fetch(`http://localhost:3000/api/users/likes`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const likesStatsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/likes`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (likesStatsRes.ok) {
         const data = await likesStatsRes.json();
         setStats(prev => ({ ...prev, likes: data.likedItems.length }));
       }
-
       // Fetch user watchlist count
-      const watchlistRes = await fetch(`http://localhost:3000/api/users/watchlist`, { headers: { 'Authorization': `Bearer ${token}` }, });
+      const watchlistRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watchlist`, { headers: { 'Authorization': `Bearer ${token}` }, });
       if (watchlistRes.ok) {
         const data = await watchlistRes.json();
         setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies.length }));
@@ -86,18 +80,16 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         });
         setWatchlist(await Promise.all(detailedWatchlistPromises));
       } else if (watchlistRes.status === 401 || watchlistRes.status === 403) handleAuthError();
-
       // Fetch user lists
-      const listsRes = await fetch(`http://localhost:3000/api/users/lists`, {
+      const listsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/lists`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (listsRes.ok) {
         const data = await listsRes.json();
         setUserLists(data.lists);
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
-
       // Fetch user top movies
-      const topMoviesRes = await fetch(`http://localhost:3000/api/users/top-movies`, {
+      const topMoviesRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-movies`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topMoviesRes.ok) {
@@ -111,9 +103,8 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         movies.sort((a, b) => a.order - b.order);
         setTopMovies(movies);
       } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
-
       // Fetch user top directors
-      const topDirectorsRes = await fetch(`http://localhost:3000/api/users/top-directors`, {
+      const topDirectorsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-directors`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topDirectorsRes.ok) {
@@ -127,23 +118,19 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         directors.sort((a, b) => a.order - b.order);
         setTopDirectors(directors);
       } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
-
       // Fetch user top actors
-      const topActorsRes = await fetch(`http://localhost:3000/api/user/top-actors`, {
+      const topActorsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-actors`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topActorsRes.ok) {
         const data = await topActorsRes.json();
-        const detailedTopActorsPromises = data.map(async (item) => {
-          const detailRes = await fetch(`${BASE_URL}/person/${item.actorId}?api_key=${API_KEY}&language=es-MX`);
-          const detail = await detailRes.json();
-          return { ...detail, order: item.order };
-        });
-        const actors = await Promise.all(detailedTopActorsPromises);
-        actors.sort((a, b) => a.order - b.order);
-        setTopActors(actors);
+        const normalizedActors = data.map(actor => ({
+          ...actor,
+          id: actor.actorId,
+        }));
+        normalizedActors.sort((a, b) => a.order - b.order);
+        setTopActors(normalizedActors);
       } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
-
     } catch (err) {
       console.error('Error fetching profile data:', err);
       setError('Error al cargar los datos del perfil.');
@@ -151,7 +138,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
-
   const handleAuthError = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
@@ -159,7 +145,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     navigate('/login');
     setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
   };
-
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -170,20 +155,16 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setProfilePicturePreview(null);
     }
   };
-
   const handleSaveProfilePicture = async () => {
     if (!selectedFile) {
       alert('Por favor, selecciona una imagen primero.');
       return;
     }
-
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     const formData = new FormData();
     formData.append('profilePicture', selectedFile);
-
     try {
       const response = await fetch(`http://localhost:3000/api/users/profile-picture`, {
         method: 'PUT',
@@ -192,7 +173,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         },
         body: formData,
       });
-
       if (response.ok) {
         const data = await response.json();
         setProfilePicture(`http://localhost:3000${data.profilePicture}`);
@@ -212,12 +192,10 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
-
   const handleDeleteProfilePicture = async () => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     try {
       const response = await fetch(`http://localhost:3000/api/users/profile-picture`, {
         method: 'PUT',
@@ -227,7 +205,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         },
         body: JSON.stringify({ profilePicture: null })
       });
-
       if (response.ok) {
         setProfilePicture(null);
         setProfilePicturePreview(null);
@@ -246,7 +223,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
-
   const handleRemoveTopMovie = async (mediaId) => {
     const token = localStorage.getItem('token');
     try {
@@ -257,7 +233,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           'Content-Type': 'application/json'
         }
       });
-
       if (response.ok) {
         setTopMovies(topMovies.filter(movie => movie.id !== mediaId));
         alert('Película eliminada del Top 10 exitosamente.');
@@ -270,7 +245,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setError('Error de red al eliminar la película.');
     }
   };
-
   const handleRemoveTopDirector = async (personId) => {
     const token = localStorage.getItem('token');
     try {
@@ -281,7 +255,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           'Content-Type': 'application/json'
         }
       });
-
       if (response.ok) {
         setTopDirectors(topDirectors.filter(director => director.id !== personId));
         alert('Director eliminado del Top 10 exitosamente.');
@@ -294,7 +267,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setError('Error de red al eliminar el director.');
     }
   };
-
   const handleRemoveTopActor = async (actorId) => {
     const token = localStorage.getItem('token');
     try {
@@ -305,7 +277,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           'Content-Type': 'application/json'
         }
       });
-
       if (response.ok) {
         setTopActors(topActors.filter(actor => actor.id !== actorId));
         alert('Actor eliminado del Top 10 exitosamente.');
@@ -318,22 +289,16 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setError('Error de red al eliminar el actor.');
     }
   };
-
   // Calcular estadísticas de ratings para mostrar
   const calculateRatingStats = () => {
     if (userRatings.length === 0) return { average: 0, total: 0 };
-    
     const scores = userRatings.map(r => r.score);
     const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-    
     return { average: average.toFixed(2), total: userRatings.length };
   };
-
   const ratingStats = calculateRatingStats();
-
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
-
   return (
     <div className="container my-5">
       <div className="row">
@@ -348,9 +313,9 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   alt="Profile" 
                   className="rounded-circle" 
                   style={{ width: '150px', height: '150px', objectFit: 'cover', border: '3px solid #454d5d', cursor: 'pointer' }}
-                  onClick={() => setIsProfilePictureModalOpen(true)}
+                  onClick={() => isOwnProfile && setIsProfilePictureModalOpen(true)}
                 />
-                {isAuthenticated && (
+                {isOwnProfile && (
                   <div 
                     className="position-absolute bottom-0 end-0 p-1" 
                     style={{ backgroundColor: '#2c3440', borderRadius: '50%', cursor: 'pointer' }}
@@ -366,7 +331,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   onChange={handleFileChange} 
                   style={{ display: 'none' }}
                 />
-                {isAuthenticated && (profilePicture || profilePicturePreview) && (
+                {isOwnProfile && (profilePicture || profilePicturePreview) && (
                   <div
                     className="position-absolute top-0 start-0 p-1"
                     style={{ backgroundColor: 'rgba(44, 52, 64, 0.8)', borderRadius: '50%', cursor: 'pointer' }}
@@ -376,12 +341,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   </div>
                 )}
               </div>
-              {isAuthenticated && selectedFile && (
+              {isOwnProfile && selectedFile && (
                 <button className="btn btn-sm btn-primary mb-3" onClick={handleSaveProfilePicture}>Guardar Foto</button>
               )}
               <h1 className="fw-bold text-light">{username}</h1>
             </div>
-
             {/* Estadísticas principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
@@ -408,7 +372,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 </div>
               </div>
             </div>
-
             {/* Estadísticas de Ratings */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <h5 className="text-light mb-3">RATINGS</h5>
@@ -424,7 +387,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 <small className="text-muted">Total Ratings</small>
               </div>
             </div>
-
             {/* Gráfico de distribución de ratings */}
             <div className="p-4 rounded" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <h5 className="text-light mb-3">DISTRIBUCIÓN</h5>
@@ -432,19 +394,20 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             </div>
           </div>
         </div>
-
         {/* Columna derecha - Contenido principal */}
         <div className="col-md-8">
           {/* Sección de Top 10 Películas */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Películas</h2>
-            <button 
-              className="btn btn-primary"
-              onClick={() => navigate('/top-movies-editor')}
-            >
-              <Plus size={16} className="me-1" />
-              Gestionar Top 10
-            </button>
+            {isOwnProfile && (
+              <button 
+                className="btn btn-primary"
+                onClick={() => navigate('/top-movies-editor')}
+              >
+                <Plus size={16} className="me-1" />
+                Gestionar Top 10
+              </button>
+            )}
           </div>
           <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
             {topMovies.length > 0 ? (
@@ -466,16 +429,18 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                           #{index + 1}
                         </div>
                       </div>
-                      <button
-                        className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveTopMovie(movie.id);
-                        }}
-                        style={{ padding: '2px 6px' }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {isOwnProfile && (
+                        <button
+                          className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTopMovie(movie.id);
+                          }}
+                          style={{ padding: '2px 6px' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                     <p className="text-light small mt-2 mb-0 text-center">
                       {movie.title || movie.name}
@@ -489,27 +454,30 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             ) : (
               <div className="text-center py-4">
                 <p className="text-muted mb-3">Aún no has agregado películas a tu Top 10.</p>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => navigate('/top-movies-editor')}
-                >
-                  <Plus size={16} className="me-1" />
-                  Crear Mi Top 10
-                </button>
+                {isOwnProfile && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/top-movies-editor')}
+                  >
+                    <Plus size={16} className="me-1" />
+                    Crear Mi Top 10
+                  </button>
+                )}
               </div>
             )}
           </div>
-
           {/* Sección de Top 10 Directores */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Directores</h2>
-            <button 
-              className="btn btn-primary"
-              onClick={() => navigate('/top-directors-editor')}
-            >
-              <Plus size={16} className="me-1" />
-              Gestionar Top 10
-            </button>
+            {isOwnProfile && (
+              <button 
+                className="btn btn-primary"
+                onClick={() => navigate('/top-directors-editor')}
+              >
+                <Plus size={16} className="me-1" />
+                Gestionar Top 10
+              </button>
+            )}
           </div>
           <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
             {topDirectors.length > 0 ? (
@@ -532,16 +500,18 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                           #{index + 1}
                         </div>
                       </div>
-                      <button
-                        className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveTopDirector(director.id);
-                        }}
-                        style={{ padding: '2px 6px' }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {isOwnProfile && (
+                        <button
+                          className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTopDirector(director.id);
+                          }}
+                          style={{ padding: '2px 6px' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                     <p className="text-light small mt-2 mb-0 text-center">
                       {director.name}
@@ -555,27 +525,30 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             ) : (
               <div className="text-center py-4">
                 <p className="text-muted mb-3">Aún no has agregado directores a tu Top 10.</p>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => navigate('/top-directors-editor')}
-                >
-                  <Plus size={16} className="me-1" />
-                  Crear Mi Top 10
-                </button>
+                {isOwnProfile && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/top-directors-editor')}
+                  >
+                    <Plus size={16} className="me-1" />
+                    Crear Mi Top 10
+                  </button>
+                )}
               </div>
             )}
           </div>
-
           {/* Sección de Top 10 Actores/Actrices */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Actores/Actrices</h2>
-            <button 
-              className="btn btn-primary"
-              onClick={() => navigate('/top-actors-editor')}
-            >
-              <Plus size={16} className="me-1" />
-              Gestionar Top 10
-            </button>
+            {isOwnProfile && (
+              <button 
+                className="btn btn-primary"
+                onClick={() => navigate('/top-actors-editor')}
+              >
+                <Plus size={16} className="me-1" />
+                Gestionar Top 10
+              </button>
+            )}
           </div>
           <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
             {topActors.length > 0 ? (
@@ -598,16 +571,18 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                           #{index + 1}
                         </div>
                       </div>
-                      <button
-                        className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveTopActor(actor.id);
-                        }}
-                        style={{ padding: '2px 6px' }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {isOwnProfile && (
+                        <button
+                          className="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-1 me-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTopActor(actor.id);
+                          }}
+                          style={{ padding: '2px 6px' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                     <p className="text-light small mt-2 mb-0 text-center">
                       {actor.name}
@@ -621,13 +596,15 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             ) : (
               <div className="text-center py-4">
                 <p className="text-muted mb-3">Aún no has agregado actores/actrices a tu Top 10.</p>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => navigate('/top-actors-editor')}
-                >
-                  <Plus size={16} className="me-1" />
-                  Crear Mi Top 10
-                </button>
+                {isOwnProfile && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/top-actors-editor')}
+                  >
+                    <Plus size={16} className="me-1" />
+                    Crear Mi Top 10
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -650,7 +627,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               <p className="text-muted">Tu watchlist está vacía.</p>
             )}
           </div>
-
           {/* Sección de Mis Listas */}
           <h2 className="fw-bold mb-4 text-light">Listas</h2>
           <div className="mb-5">
@@ -675,7 +651,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           </div>
         </div>
       </div>
-
       {selectedMovie && (
         <MovieDetailsModal
           movie={selectedMovie}
@@ -689,7 +664,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           onNavigate={onNavigate}
         />
       )}
-
       {isProfilePictureModalOpen && (
         <div className="modal-backdrop-dark" onClick={() => setIsProfilePictureModalOpen(false)}>
           <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
@@ -713,5 +687,4 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     </div>
   );
 };
-
 export default ProfilePage;

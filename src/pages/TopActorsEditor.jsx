@@ -16,15 +16,20 @@ const TopActorsEditor = () => {
 
   const fetchUserTopActors = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    const userId = localStorage.getItem('userId');
+    if (!token || !userId) return;
 
     try {
-      const response = await fetch('http://localhost:3000/api/user/top-actors', {
+      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-actors`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        setActors(data);
+        const normalizedActors = data.map(actor => ({
+          ...actor,
+          id: actor.actorId,
+        }));
+        setActors(normalizedActors);
       }
     } catch (error) {
       console.error('Error fetching top actors:', error);
@@ -79,7 +84,7 @@ const TopActorsEditor = () => {
   };
 
   const removeActor = (actorId) => {
-    setActors(prev => prev.filter(actor => actor.id !== actorId));
+    setActors(prev => prev.filter(actor => actor.id !== actorId).map((actor, index) => ({ ...actor, order: index })));
   };
 
 

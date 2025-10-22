@@ -20,19 +20,21 @@ const TopMoviesEditor = () => {
 
   const fetchCurrentTopMovies = async () => {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
     try {
-      const response = await fetch('http://localhost:3000/api/users/top-movies', {
+      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-movies`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        // Obtener detalles de cada película
+        // Obtener detalles de cada película y normalizar
         const detailedMovies = await Promise.all(
           data.topMovies.map(async (item) => {
             const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
             return { 
-              ...detail, 
+              ...detail,
+              id: item.mediaId, // Normalizar a 'id'
               media_type: item.mediaType, 
               order: item.order 
             };
@@ -115,10 +117,10 @@ const TopMoviesEditor = () => {
     const token = localStorage.getItem('token');
     
     try {
-      const topMoviesData = topMovies.map(movie => ({
+      const topMoviesData = topMovies.map((movie, index) => ({
         mediaId: movie.id,
         mediaType: movie.media_type || 'movie',
-        order: movie.order
+        order: index,
       }));
 
       const response = await fetch('http://localhost:3000/api/users/top-movies', {

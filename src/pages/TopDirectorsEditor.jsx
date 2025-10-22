@@ -20,19 +20,21 @@ const TopDirectorsEditor = () => {
 
   const fetchCurrentTopDirectors = async () => {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
     try {
-      const response = await fetch('http://localhost:3000/api/users/top-directors', {
+      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-directors`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        // Obtener detalles de cada director
+        // Obtener detalles de cada director y normalizar el ID
         const detailedDirectors = await Promise.all(
           data.topDirectors.map(async (item) => {
             const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
             return { 
-              ...detail, 
+              ...detail,
+              id: item.personId, // Normalizar a 'id'
               order: item.order 
             };
           })
@@ -114,9 +116,9 @@ const TopDirectorsEditor = () => {
     const token = localStorage.getItem('token');
     
     try {
-      const topDirectorsData = topDirectors.map(director => ({
+      const topDirectorsData = topDirectors.map((director, index) => ({
         personId: director.id,
-        order: director.order
+        order: index,
       }));
 
       const response = await fetch('http://localhost:3000/api/users/top-directors', {

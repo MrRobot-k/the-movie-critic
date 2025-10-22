@@ -237,10 +237,10 @@ app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
   }
 });
 
-// Endpoint para obtener todas las películas a las que el usuario le ha dado 'Me gusta'
-app.get('/api/users/likes', authenticateToken, async (req, res) => {
+// Endpoint para obtener todas las películas a las que un usuario le ha dado 'Me gusta'
+app.get('/api/users/:userId/likes', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
 
     const { count, rows } = await Like.findAndCountAll({
       where: { userId },
@@ -328,10 +328,10 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
   }
 });
 
-// Endpoint para obtener todas las películas en la watchlist del usuario autenticado
-app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
+// Endpoint para obtener todas las películas en la watchlist de un usuario
+app.get('/api/users/:userId/watchlist', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
 
     const { count, rows } = await Watchlist.findAndCountAll({
       where: { userId },
@@ -501,9 +501,9 @@ app.post('/api/lists', authenticateToken, async (req, res) => {
 });
 
 // Obtener todas las listas del usuario
-app.get('/api/users/lists', authenticateToken, async (req, res) => {
+app.get('/api/users/:userId/lists', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
 
     const lists = await List.findAll({
       where: { userId },
@@ -682,9 +682,9 @@ app.post('/api/users/top-movies', authenticateToken, async (req, res) => {
 });
 
 // Endpoint para obtener las Top 10 Películas de un usuario
-app.get('/api/users/top-movies', authenticateToken, async (req, res) => {
+app.get('/api/users/:userId/top-movies', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
     const topMovies = await TopMovie.findAll({
       where: { userId },
       order: [['order', 'ASC']],
@@ -743,9 +743,9 @@ app.post('/api/users/top-directors', authenticateToken, async (req, res) => {
 });
 
 // Endpoint para obtener los Top 10 Directores de un usuario
-app.get('/api/users/top-directors', authenticateToken, async (req, res) => {
+app.get('/api/users/:userId/top-directors', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
     const topDirectors = await TopDirector.findAll({
       where: { userId },
       order: [['order', 'ASC']],
@@ -806,9 +806,9 @@ app.post('/api/user/top-actors', authenticateToken, async (req, res) => {
 });
 
 // Endpoint para obtener los Top 10 Actores de un usuario
-app.get('/api/user/top-actors', authenticateToken, async (req, res) => {
+app.get('/api/users/:userId/top-actors', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { userId } = req.params;
     const topActors = await UserTopActors.findAll({
       where: { userId },
       order: [['order', 'ASC']],
@@ -834,6 +834,31 @@ app.delete('/api/user/top-actors/:actorId', authenticateToken, async (req, res) 
     else res.status(404).json({ error: 'Actor no encontrado en el Top 10.' });
   } catch (error) {
     console.error('Error deleting top actor:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para buscar usuarios
+app.get('/api/users/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ error: 'Query de búsqueda requerido.' });
+    }
+
+    const users = await User.findAll({
+      where: {
+        username: {
+          [Sequelize.Op.iLike]: `%${q}%`,
+        },
+      },
+      attributes: ['id', 'username', 'profilePicture'],
+      limit: 10,
+    });
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
     res.status(500).json({ error: error.message });
   }
 });

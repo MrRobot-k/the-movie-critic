@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const fetchProfilePicture = async () => {
@@ -27,12 +29,31 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     fetchProfilePicture();
   }, [userId]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('username');
     setIsAuthenticated(false);
     navigate('/login');
+  };
+
+  const handleUserSearch = (e) => {
+    e.preventDefault();
+    if (userSearchQuery.trim()) {
+      navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+    }
   };
 
   return (
@@ -81,9 +102,31 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         }}>
           <input 
             type="search" 
-            placeholder="Buscar..." 
+            placeholder="Buscar películas..." 
             value={query} 
             onChange={(e) => setQuery(e.target.value)} 
+            style={{
+              width: '100%',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#2c3440',
+              color: '#fff',
+              border: '1px solid #454d5d',
+              borderRadius: '0.25rem',
+              outline: 'none'
+            }}
+          />
+        </form>
+
+        {/* User Search form */}
+        <form onSubmit={handleUserSearch} style={{
+          flex: 1,
+          maxWidth: '200px',
+        }}>
+          <input 
+            type="search" 
+            placeholder="Buscar usuarios..." 
+            value={userSearchQuery} 
+            onChange={(e) => setUserSearchQuery(e.target.value)} 
             style={{
               width: '100%',
               padding: '0.5rem 1rem',
@@ -99,12 +142,14 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         {/* Profile dropdown */}
         <div 
           style={{ position: 'relative' }}
-          onMouseEnter={() => setShowDropdown(true)}
-          onMouseLeave={() => setShowDropdown(false)}
+          ref={dropdownRef}
         >
           <a 
             href="#"
-            onClick={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              setShowDropdown(!showDropdown);
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
