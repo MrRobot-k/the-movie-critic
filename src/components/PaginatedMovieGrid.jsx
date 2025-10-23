@@ -5,7 +5,7 @@ import MovieDetailsModal from './MovieDetailsModal';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
-const PaginatedMovieGrid = ({ endpoint, title, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, getMovieDetails, selectedMovie, onCloseDetails, query, clearSearch }) => {
+const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, getMovieDetails, selectedMovie, onCloseDetails, query, clearSearch, moviesData }) => {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -255,9 +255,64 @@ const PaginatedMovieGrid = ({ endpoint, title, isAuthenticated, onRateMovie, onT
   };
 
   useEffect(() => {
-    fetchMovies();
-  }, [navigate, currentPage, sortBy, endpoint, query, selectedMovie, selectedGenre, selectedCountry, selectedDecade]);
+    if (moviesData) {
+      processMoviesData(moviesData);
+    } else {
+      fetchMovies();
+    }
+  }, [navigate, currentPage, sortBy, endpoint, query, selectedMovie, selectedGenre, selectedCountry, selectedDecade, moviesData]);
 
+  const processMoviesData = async (data) => {
+    setLoading(true);
+    setError('');
+    try {
+      const itemDetailsPromises = data.map(async (item) => {
+        const detailUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`;
+        const detailRes = await fetch(detailUrl);
+        if (!detailRes.ok) {
+          console.error(`Error fetching details for ${item.mediaType} ${item.mediaId}`);
+          return null;
+        }
+        const detail = await detailRes.json();
+        return { ...detail, userScore: item.score, media_type: item.mediaType };
+      });
+
+      let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
+      // Apply filters, sorting, and pagination as in fetchMovies
+      // This part can be extracted to a helper function to avoid repetition
+      if (selectedGenre) {
+        detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
+      }
+      if (selectedCountry) {
+        detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
+      }
+      if (selectedDecade) {
+        const startYear = parseInt(selectedDecade);
+        const endYear = startYear + 9;
+        detailedItems = detailedItems.filter(movie => {
+          const releaseDate = movie.release_date || movie.first_air_date;
+          if (!releaseDate) return false;
+          const releaseYear = new Date(releaseDate).getFullYear();
+          return releaseYear >= startYear && releaseYear <= endYear;
+        });
+      }
+
+      const sortedItems = sortMoviesLocally(detailedItems, sortBy);
+      const itemsPerPage = 24;
+      const totalItems = sortedItems.length;
+      const totalPagesCalculated = Math.ceil(totalItems / itemsPerPage);
+      setTotalPages(totalPagesCalculated);
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedItems = sortedItems.slice(startIndex, endIndex);
+      setMovies(paginatedItems);
+    } catch (err) {
+      console.error('Error processing movies data:', err);
+      setError('Error al procesar las películas.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
       setCurrentPage(newPage);

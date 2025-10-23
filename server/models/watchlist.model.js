@@ -23,6 +23,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isPublic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
   }, {
     timestamps: true,
     indexes: [

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X } from 'lucide-react';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import PaginatedMovieGrid from '../components/PaginatedMovieGrid';
@@ -10,13 +10,14 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate }) => {
   const navigate = useNavigate();
   const { userId: paramUserId } = useParams();
+  const location = useLocation();
   const fileInputRef = useRef(null);
   const [username, setUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [watchlist, setWatchlist] = useState([]);
+
   const [userLists, setUserLists] = useState([]);
   const [topMovies, setTopMovies] = useState([]);
   const [topDirectors, setTopDirectors] = useState([]);
@@ -35,7 +36,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       return;
     }
     fetchProfileData();
-  }, [isAuthenticated, userIdToFetch, navigate]);
+  }, [isAuthenticated, userIdToFetch, navigate, location]);
   const fetchProfileData = async () => {
     setLoading(true);
     setError('');
@@ -67,19 +68,13 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         const data = await likesStatsRes.json();
         setStats(prev => ({ ...prev, likes: data.likedItems.length }));
       }
-      // Fetch user watchlist count
-      const watchlistRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watchlist`, { headers: { 'Authorization': `Bearer ${token}` }, });
-      if (watchlistRes.ok) {
-        const data = await watchlistRes.json();
+
+      const watchlistStatsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watchlist`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (watchlistStatsRes.ok) {
+        const data = await watchlistStatsRes.json();
         setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies.length }));
-        // Solo cargar preview de watchlist
-        const detailedWatchlistPromises = data.watchlistedMovies.slice(0, 10).map(async (item) => {
-          const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-          const detail = await detailRes.json();
-          return { ...detail, media_type: item.mediaType };
-        });
-        setWatchlist(await Promise.all(detailedWatchlistPromises));
-      } else if (watchlistRes.status === 401 || watchlistRes.status === 403) handleAuthError();
+      }
+
       // Fetch user lists
       const listsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/lists`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -349,13 +344,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             {/* Estadísticas principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
-                <div className="col-4">
-                  <div className="d-flex flex-column align-items-center">
-                    <Bookmark size={20} className="text-primary mb-1" />
-                    <h5 className="fw-bold mb-0 text-light">{stats.watchlist}</h5>
-                    <small className="text-muted">WATCHLIST</small>
-                  </div>
-                </div>
+
                 <div className="col-4">
                   <div className="d-flex flex-column align-items-center">
                     <Film size={20} className="text-success mb-1" />
@@ -608,25 +597,23 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-          <div className="mb-5">
-            {watchlist.length > 0 ? (
-              <div className="row g-1 poster-grid">
-                {watchlist.slice(0, 10).map((movie, index) => (
-                  <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-                    <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.media_type, null, watchlist, index)}>
-                      <img
-                        src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
-                        alt={movie.title || movie.name}
-                        className="img-fluid rounded"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted">Tu watchlist está vacía.</p>
-            )}
+
+          {/* Sección de Películas Vistas */}
+          <h2 className="fw-bold mb-4 text-light">Películas Vistas</h2>
+          <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+            <PaginatedMovieGrid
+              moviesData={userRatings}
+              title=""
+              isAuthenticated={isAuthenticated}
+              getMovieDetails={getMovieDetails}
+              selectedMovie={selectedMovie}
+              onCloseDetails={onCloseDetails}
+              onRateMovie={onRateMovie}
+              onToggleLike={onToggleLike}
+              onToggleWatchlist={onToggleWatchlist}
+            />
           </div>
+
           {/* Sección de Mis Listas */}
           <h2 className="fw-bold mb-4 text-light">Listas</h2>
           <div className="mb-5">

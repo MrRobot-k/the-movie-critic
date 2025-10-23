@@ -214,6 +214,22 @@ app.get('/api/users/watched', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint para obtener todas las películas calificadas por un usuario específico
+app.get('/api/users/:userId/watched', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { count, rows } = await Rating.findAndCountAll({
+      where: { userId },
+      attributes: ['mediaId', 'mediaType', 'score'],
+    });
+
+    res.status(200).json({ watchedMovies: rows, totalPages: 1 });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -329,18 +345,48 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
 });
 
 // Endpoint para obtener todas las películas en la watchlist de un usuario
-app.get('/api/users/:userId/watchlist', async (req, res) => {
+app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
+    const loggedInUserId = req.user.id;
+
+    const whereClause = { userId };
+
+    if (parseInt(userId) !== loggedInUserId) {
+      whereClause.isPublic = true;
+    }
 
     const { count, rows } = await Watchlist.findAndCountAll({
-      where: { userId },
+      where: whereClause,
       attributes: ['mediaId', 'mediaType'],
     });
+
+    if (whereClause.isPublic && rows.length === 0) {
+      return res.status(404).json({ message: 'This watchlist is private.' });
+    }
 
     res.status(200).json({ watchlistedMovies: rows, totalPages: 1 });
   } catch (error) {
     console.error('Error in /api/users/watchlist:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para actualizar la privacidad de la watchlist
+app.put('/api/users/watchlist/privacy', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { isPublic } = req.body;
+
+    if (typeof isPublic !== 'boolean') {
+      return res.status(400).json({ error: 'isPublic must be a boolean.' });
+    }
+
+    await Watchlist.update({ isPublic }, { where: { userId } });
+
+    res.status(200).json({ message: `Watchlist privacy updated to ${isPublic ? 'public' : 'private'}.` });
+  } catch (error) {
+    console.error('Error updating watchlist privacy:', error);
     res.status(500).json({ error: error.message });
   }
 });

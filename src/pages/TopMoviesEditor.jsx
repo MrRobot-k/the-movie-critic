@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -98,17 +99,17 @@ const TopMoviesEditor = () => {
     setTopMovies(updatedMovies);
   };
 
-  const moveMovie = (fromIndex, toIndex) => {
-    const updatedMovies = [...topMovies];
-    const [movedMovie] = updatedMovies.splice(fromIndex, 1);
-    updatedMovies.splice(toIndex, 0, movedMovie);
-    
-    // Actualizar órden
-    const reorderedMovies = updatedMovies.map((movie, index) => ({
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(topMovies);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    const reorderedMovies = items.map((movie, index) => ({
       ...movie,
       order: index + 1
     }));
-    
+
     setTopMovies(reorderedMovies);
   };
 
@@ -120,7 +121,7 @@ const TopMoviesEditor = () => {
       const topMoviesData = topMovies.map((movie, index) => ({
         mediaId: movie.id,
         mediaType: movie.media_type || 'movie',
-        order: index,
+        order: index + 1,
       }));
 
       const response = await fetch('http://localhost:3000/api/users/top-movies', {
@@ -234,42 +235,58 @@ const TopMoviesEditor = () => {
               <p className="text-muted">No hay películas en tu Top 10. Busca y agrega algunas!</p>
             </div>
           ) : (
-            <div className="row g-3">
-              {topMovies.map((movie, index) => (
-                <div key={movie.id} className="col-12">
-                  <div 
-                    className="d-flex align-items-center p-3 rounded"
-                    style={{ backgroundColor: '#2c3440', border: '1px solid #454d5d' }}
-                  >
-                    <div className="me-3" style={{ cursor: 'grab' }}>
-                      <GripVertical size={20} className="text-muted" />
-                    </div>
-                    <div className="me-3 text-center">
-                      <span className="badge bg-primary fs-6">#{index + 1}</span>
-                    </div>
-                    <img
-                      src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : '/placeholder-poster.svg'}
-                      alt={movie.title || movie.name}
-                      className="rounded me-3"
-                      style={{ width: '60px', height: '90px', objectFit: 'cover' }}
-                    />
-                    <div className="flex-grow-1">
-                      <h6 className="text-light mb-1">{movie.title || movie.name}</h6>
-                      <p className="text-muted small mb-0">
-                        {movie.release_date ? new Date(movie.release_date).getFullYear() : 
-                         movie.first_air_date ? new Date(movie.first_air_date).getFullYear() : 'N/A'}
-                      </p>
-                    </div>
-                    <button
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={() => removeFromTopMovies(movie.id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="topMovies">
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef}>
+                    {topMovies.map((movie, index) => (
+                      <Draggable key={movie.id} draggableId={String(movie.id)} index={index}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="d-flex align-items-center p-3 rounded mb-2"
+                            style={{ 
+                              backgroundColor: '#2c3440', 
+                              border: '1px solid #454d5d',
+                              ...provided.draggableProps.style
+                            }}
+                          >
+                            <div className="me-3" style={{ cursor: 'grab' }}>
+                              <GripVertical size={20} className="text-muted" />
+                            </div>
+                            <div className="me-3 text-center">
+                              <span className="badge bg-primary fs-6">#{index + 1}</span>
+                            </div>
+                            <img
+                              src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : '/placeholder-poster.svg'}
+                              alt={movie.title || movie.name}
+                              className="rounded me-3"
+                              style={{ width: '60px', height: '90px', objectFit: 'cover' }}
+                            />
+                            <div className="flex-grow-1">
+                              <h6 className="text-light mb-1">{movie.title || movie.name}</h6>
+                              <p className="text-muted small mb-0">
+                                {movie.release_date ? new Date(movie.release_date).getFullYear() : 
+                                 movie.first_air_date ? new Date(movie.first_air_date).getFullYear() : 'N/A'}
+                              </p>
+                            </div>
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => removeFromTopMovies(movie.id)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
 
           {/* Botones de acción */}

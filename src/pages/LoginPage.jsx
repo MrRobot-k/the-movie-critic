@@ -1,44 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 const LoginPage = ({ setIsAuthenticated }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
     try {
       const response = await fetch('http://localhost:3000/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al iniciar sesión.');
-      }
-
-      // Si el inicio de sesión es exitoso
-      console.log('Login successful:', data);
-      localStorage.setItem('token', data.token); // Guardar el token JWT
-      localStorage.setItem('userId', data.user.id); // Guardar el ID del usuario en localStorage
-      localStorage.setItem('username', data.user.username); // Guardar el nombre de usuario en localStorage
-      setIsAuthenticated(true); // Actualiza el estado de autenticación en App.jsx
-      navigate('/'); // Redirige a la página principal
-
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.user.id);
+        setIsAuthenticated(true);
+        navigate('/');
+      } else alert(data.error || 'Error al iniciar sesión');
     } catch (err) {
-      setError(err.message);
+      console.error('Error:', error);
+      alert('Error al conectar con el servidor');
     }
   };
-
   return (
     <div className="container" style={{ marginTop: '100px' }}>
       <h2>Iniciar Sesión</h2>
@@ -72,5 +58,4 @@ const LoginPage = ({ setIsAuthenticated }) => {
     </div>
   );
 };
-
 export default LoginPage;

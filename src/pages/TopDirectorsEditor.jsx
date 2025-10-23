@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -97,17 +98,17 @@ const TopDirectorsEditor = () => {
     setTopDirectors(updatedDirectors);
   };
 
-  const moveDirector = (fromIndex, toIndex) => {
-    const updatedDirectors = [...topDirectors];
-    const [movedDirector] = updatedDirectors.splice(fromIndex, 1);
-    updatedDirectors.splice(toIndex, 0, movedDirector);
-    
-    // Actualizar órden
-    const reorderedDirectors = updatedDirectors.map((director, index) => ({
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(topDirectors);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    const reorderedDirectors = items.map((director, index) => ({
       ...director,
       order: index + 1
     }));
-    
+
     setTopDirectors(reorderedDirectors);
   };
 
@@ -118,7 +119,7 @@ const TopDirectorsEditor = () => {
     try {
       const topDirectorsData = topDirectors.map((director, index) => ({
         personId: director.id,
-        order: index,
+        order: index + 1,
       }));
 
       const response = await fetch('http://localhost:3000/api/users/top-directors', {
@@ -222,7 +223,7 @@ const TopDirectorsEditor = () => {
         <div className="card-header">
           <h5 className="mb-0 text-light">Mi Top 10 Directores</h5>
           <p className="text-muted small mb-0">
-            {topDirectors.length}/10 directores
+            {topDirectors.length}/10 directores • Arrastra para reordenar
           </p>
         </div>
         <div className="card-body">
@@ -231,38 +232,57 @@ const TopDirectorsEditor = () => {
               <p className="text-muted">No hay directores en tu Top 10. Busca y agrega algunos!</p>
             </div>
           ) : (
-            <div className="row g-3">
-              {topDirectors.map((director, index) => (
-                <div key={director.id} className="col-12 col-md-6">
-                  <div 
-                    className="d-flex align-items-center p-3 rounded"
-                    style={{ backgroundColor: '#2c3440', border: '1px solid #454d5d' }}
-                  >
-                    <div className="me-3 text-center">
-                      <span className="badge bg-primary fs-6">#{index + 1}</span>
-                    </div>
-                    <img
-                      src={director.profile_path ? `${IMAGE_BASE_URL}/w92${director.profile_path}` : '/placeholder-profile.svg'}
-                      alt={director.name}
-                      className="rounded-circle me-3"
-                      style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                    />
-                    <div className="flex-grow-1">
-                      <h6 className="text-light mb-1">{director.name}</h6>
-                      <p className="text-muted small mb-0">
-                        {director.known_for_department}
-                      </p>
-                    </div>
-                    <button
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={() => removeFromTopDirectors(director.id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="topDirectors">
+                {(provided) => (
+                  <div {...provided.droppableProps} ref={provided.innerRef}>
+                    {topDirectors.map((director, index) => (
+                      <Draggable key={director.id} draggableId={String(director.id)} index={index}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="d-flex align-items-center p-3 rounded mb-2"
+                            style={{ 
+                              backgroundColor: '#2c3440', 
+                              border: '1px solid #454d5d',
+                              ...provided.draggableProps.style
+                            }}
+                          >
+                            <div className="me-3" style={{ cursor: 'grab' }}>
+                              <GripVertical size={20} className="text-muted" />
+                            </div>
+                            <div className="me-3 text-center">
+                              <span className="badge bg-primary fs-6">#{index + 1}</span>
+                            </div>
+                            <img
+                              src={director.profile_path ? `${IMAGE_BASE_URL}/w92${director.profile_path}` : '/placeholder-profile.svg'}
+                              alt={director.name}
+                              className="rounded-circle me-3"
+                              style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+                            />
+                            <div className="flex-grow-1">
+                              <h6 className="text-light mb-1">{director.name}</h6>
+                              <p className="text-muted small mb-0">
+                                {director.known_for_department}
+                              </p>
+                            </div>
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => removeFromTopDirectors(director.id)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
 
           {/* Botones de acción */}
