@@ -359,6 +359,13 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <small className="text-muted">LIKES</small>
                   </div>
                 </div>
+                <div className="col-4">
+                  <div className="d-flex flex-column align-items-center">
+                    <Bookmark size={20} className="text-primary mb-1" />
+                    <h5 className="fw-bold mb-0 text-light">{stats.watchlist}</h5>
+                    <small className="text-muted">WATCHLIST</small>
+                  </div>
+                </div>
               </div>
             </div>
             {/* Estadísticas de Ratings */}
@@ -431,12 +438,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                         </button>
                       )}
                     </div>
-                    <p className="text-light small mt-2 mb-0 text-center">
-                      {movie.title || movie.name}
-                      {movie.original_title && movie.original_title !== (movie.title || movie.name) && movie.original_language !== 'es' && (
-                        <span className="d-block text-muted fst-italic" style={{ fontSize: '0.75em' }}>({movie.original_title})</span>
-                      )}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -504,9 +505,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     </div>
                     <p className="text-light small mt-2 mb-0 text-center">
                       {director.name}
-                    </p>
-                    <p className="text-muted small text-center">
-                      {director.known_for_department}
                     </p>
                   </div>
                 ))}

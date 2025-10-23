@@ -344,6 +344,22 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
   }
 });
 
+// Endpoint para obtener todas las películas en la watchlist del usuario autenticado
+app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { count, rows } = await Watchlist.findAndCountAll({
+      where: { userId },
+      attributes: ['mediaId', 'mediaType'],
+    });
+
+    res.status(200).json({ watchlistedMovies: rows, totalPages: 1 });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint para obtener todas las películas en la watchlist de un usuario
 app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
   try {
