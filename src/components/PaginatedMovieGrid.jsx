@@ -274,7 +274,7 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           return null;
         }
         const detail = await detailRes.json();
-        return { ...detail, userScore: item.score, media_type: item.mediaType };
+        return { ...detail, userScore: item.score, mediaType: item.mediaType };
       });
 
       let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
@@ -437,15 +437,17 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         <div className="row g-1 poster-grid">
           {movies.map((movie) => (
             <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-                                          <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>                <img
-                  src={
-                    movie.poster_path
-                      ? `${IMAGE_BASE_URL}/w342${movie.poster_path}`
-                      : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
-                  }
-                  alt={movie.title || movie.name}
-                  className="img-fluid rounded"
-                />
+                                          <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>
+                <div className="poster-container">
+                  <img
+                    src={
+                      movie.poster_path
+                        ? `${IMAGE_BASE_URL}/w342${movie.poster_path}`
+                        : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+                    }
+                    alt={movie.title || movie.name}
+                  />
+                </div>
                 {movie.userScore && (
                   <div className="user-score-overlay">
                     <span>{movie.userScore.toFixed(1)}</span>

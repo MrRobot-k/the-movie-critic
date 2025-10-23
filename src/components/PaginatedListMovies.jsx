@@ -108,11 +108,12 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [] }) =
           {paginatedMovies.map((movie, index) => (
             <div key={`${movie.id}-${movie.media_type}`} className="col-4 col-md-3 col-lg-2 mb-1">
               <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.media_type, movie.userScore, sortedMovies, (currentPage - 1) * ITEMS_PER_PAGE + index)}>
-                                  <img
-                                    src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
-                                    alt={movie.title || movie.name}
-                                    className="img-fluid rounded"
-                                  />
+                <div className="poster-container">
+                  <img
+                    src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
+                    alt={movie.title || movie.name}
+                  />
+                </div>
                                   {/* Assuming list.isNumbered is not available here, so not rendering the number overlay */}
               </div>
             </div>

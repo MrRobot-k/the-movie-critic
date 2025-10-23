@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X } from 'lucide-react';
+import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X, Save, Edit } from 'lucide-react';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import PaginatedMovieGrid from '../components/PaginatedMovieGrid';
 import RatingDistributionChart from '../components/RatingDistributionChart';
@@ -13,6 +13,10 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const location = useLocation();
   const fileInputRef = useRef(null);
   const [username, setUsername] = useState('');
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [slogan, setSlogan] = useState('');
+  const [newSlogan, setNewSlogan] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -52,6 +56,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       if (userRes.ok) {
         const userData = await userRes.json();
         setUsername(userData.username);
+        setSlogan(userData.slogan || '');
         setProfilePicture(userData.profilePicture ? `http://localhost:3000${userData.profilePicture}` : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
       // Fetch user ratings para el gráfico
@@ -92,7 +97,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         const detailedTopMoviesPromises = data.topMovies.map(async (item) => {
           const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
           const detail = await detailRes.json();
-          return { ...detail, media_type: item.mediaType, order: item.order };
+          return { ...detail, mediaType: item.mediaType, order: item.order };
         });
         const movies = await Promise.all(detailedTopMoviesPromises);
         movies.sort((a, b) => a.order - b.order);
@@ -126,6 +131,25 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         normalizedActors.sort((a, b) => a.order - b.order);
         setTopActors(normalizedActors);
       } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
+
+      // Fetch user reviews
+      const reviewsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/reviews`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (reviewsRes.ok) {
+        const data = await reviewsRes.json();
+        
+        const reviewsWithMovieDetails = await Promise.all(data.reviews.map(async (review) => {
+          const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
+          const detail = await detailRes.json();
+          return { ...review, movieDetails: detail };
+        }));
+
+        setReviews(reviewsWithMovieDetails);
+      } else if (reviewsRes.status === 401 || reviewsRes.status === 403) {
+        handleAuthError();
+      }
+
     } catch (err) {
       console.error('Error fetching profile data:', err);
       setError('Error al cargar los datos del perfil.');
@@ -218,6 +242,47 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
+
+  const handleSaveProfile = async () => {
+    if (!newUsername.trim()) {
+      alert('El nombre de usuario no puede estar vacío.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: newUsername, slogan: newSlogan }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsername(data.user.username);
+        setSlogan(data.user.slogan);
+        setIsEditingUsername(false);
+        localStorage.setItem('username', data.user.username);
+      } else if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al actualizar el perfil.');
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError('Error de red al actualizar el perfil.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRemoveTopMovie = async (mediaId) => {
     const token = localStorage.getItem('token');
     try {
@@ -284,16 +349,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setError('Error de red al eliminar el actor.');
     }
   };
-  // Calcular estadísticas de ratings para mostrar
-  const calculateRatingStats = () => {
-    if (userRatings.length === 0) return { average: 0, total: 0 };
-    const scores = userRatings.map(r => r.score);
-    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-    return { average: average.toFixed(2), total: userRatings.length };
-  };
-  const ratingStats = calculateRatingStats();
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
+
+  const ratingStats = {};
+
   return (
     <div className="container my-5">
       <div className="row">
@@ -310,15 +370,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   style={{ width: '150px', height: '150px', objectFit: 'cover', border: '3px solid #454d5d', cursor: 'pointer' }}
                   onClick={() => isOwnProfile && setIsProfilePictureModalOpen(true)}
                 />
-                {isOwnProfile && (
-                  <div 
-                    className="position-absolute bottom-0 end-0 p-1" 
-                    style={{ backgroundColor: '#2c3440', borderRadius: '50%', cursor: 'pointer' }}
-                    onClick={() => fileInputRef.current.click()}
-                  >
-                    <Camera size={20} color="#fff" />
-                  </div>
-                )}
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -326,61 +377,97 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   onChange={handleFileChange} 
                   style={{ display: 'none' }}
                 />
-                {isOwnProfile && (profilePicture || profilePicturePreview) && (
-                  <div
-                    className="position-absolute top-0 start-0 p-1"
-                    style={{ backgroundColor: 'rgba(44, 52, 64, 0.8)', borderRadius: '50%', cursor: 'pointer' }}
-                    onClick={handleDeleteProfilePicture}
-                  >
-                    <Trash2 size={20} color="#dc3545" />
-                  </div>
-                )}
               </div>
-              {isOwnProfile && selectedFile && (
-                <button className="btn btn-sm btn-primary mb-3" onClick={handleSaveProfilePicture}>Guardar Foto</button>
+
+              {isOwnProfile && (
+                <div className="d-flex justify-content-center gap-2 mb-3">
+                  <button className="btn btn-sm btn-outline-light" onClick={() => fileInputRef.current.click()} title="Cambiar foto de perfil">
+                    <Camera size={16} />
+                  </button>
+                  {(profilePicture || profilePicturePreview) && (
+                    <button className="btn btn-sm btn-outline-danger" onClick={handleDeleteProfilePicture} title="Eliminar foto de perfil">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  {selectedFile && (
+                    <button className="btn btn-sm btn-primary" onClick={handleSaveProfilePicture} title="Guardar foto de perfil">
+                      <Save size={16} />
+                    </button>
+                  )}
+                </div>
               )}
-              <h1 className="fw-bold text-light">{username}</h1>
+
+              {isEditingUsername ? (
+                <div className="w-100">
+                  <div className="d-flex justify-content-center align-items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Nombre de usuario"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                    />
+                  </div>
+                  <div className="d-flex justify-content-center align-items-center gap-2 mb-3">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Eslogan..."
+                      value={newSlogan}
+                      onChange={(e) => setNewSlogan(e.target.value)}
+                    />
+                  </div>
+                  <div className="d-flex justify-content-center align-items-center gap-2">
+                    <button className="btn btn-sm btn-primary" onClick={handleSaveProfile}>Guardar</button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setIsEditingUsername(false)}>Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="d-flex justify-content-center align-items-center gap-2">
+                    <h1 className="fw-bold text-light mb-0">{username}</h1>
+                    {isOwnProfile && (
+                      <button className="btn btn-sm btn-outline-light" onClick={() => { setIsEditingUsername(true); setNewUsername(username); setNewSlogan(slogan); }}>
+                        <Edit size={16} />
+                      </button>
+                    )}
+                  </div>
+                  {slogan && <p className="text-muted mt-2">{slogan}</p>}
+                </div>
+              )}
             </div>
             {/* Estadísticas principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
 
-                <div className="col-4">
+                <div className="col-3">
                   <div className="d-flex flex-column align-items-center">
                     <Film size={20} className="text-success mb-1" />
                     <h5 className="fw-bold mb-0 text-light">{stats.watched}</h5>
                     <small className="text-muted">DIARY</small>
                   </div>
                 </div>
-                <div className="col-4">
+                <div className="col-3">
                   <div className="d-flex flex-column align-items-center">
                     <Heart size={20} className="text-danger mb-1" />
                     <h5 className="fw-bold mb-0 text-light">{stats.likes}</h5>
                     <small className="text-muted">LIKES</small>
                   </div>
                 </div>
-                <div className="col-4">
+                <div className="col-3">
                   <div className="d-flex flex-column align-items-center">
                     <Bookmark size={20} className="text-primary mb-1" />
                     <h5 className="fw-bold mb-0 text-light">{stats.watchlist}</h5>
                     <small className="text-muted">WATCHLIST</small>
                   </div>
                 </div>
-              </div>
-            </div>
-            {/* Estadísticas de Ratings */}
-            <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
-              <h5 className="text-light mb-3">RATINGS</h5>
-              <div className="text-center mb-3">
-                <div className="d-flex justify-content-center align-items-baseline">
-                  <h3 className="text-warning fw-bold mb-0">{ratingStats.average}</h3>
-                  <small className="text-muted ms-1">/5</small>
+                <div className="col-3">
+                  <div className="d-flex flex-column align-items-center">
+                    <ListIcon size={20} className="text-info mb-1" />
+                    <h5 className="fw-bold mb-0 text-light">{userLists.length}</h5>
+                    <small className="text-muted">LISTS</small>
+                  </div>
                 </div>
-                <small className="text-muted">Average Rating</small>
-              </div>
-              <div className="text-center">
-                <h5 className="text-light fw-bold">{ratingStats.total}</h5>
-                <small className="text-muted">Total Ratings</small>
               </div>
             </div>
             {/* Gráfico de distribución de ratings */}
@@ -416,11 +503,12 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                         onClick={() => getMovieDetails(movie.id, movie.media_type, null, topMovies, index)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <img
-                          src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
-                          alt={movie.title || movie.name}
-                          className="img-fluid rounded"
-                        />
+                        <div className="poster-container">
+                          <img
+                            src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
+                            alt={movie.title || movie.name}
+                          />
+                        </div>
                         <div className="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 rounded-end">
                           #{index + 1}
                         </div>
@@ -593,6 +681,57 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   </button>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Sección de Reviews */}
+          <h2 className="fw-bold mb-4 text-light">Reviews</h2>
+          <div className="mb-5">
+            {reviews.length > 0 ? (
+              reviews.map(review => (
+                <div key={review.id} className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+                  <div className="row">
+                    <div className="col-md-2">
+                      <div className="poster-container">
+                        {review.movieDetails.poster_path ? (
+                          <img
+                            src={`${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}`}
+                            alt={review.movieDetails.title || review.movieDetails.name}
+                          />
+                        ) : (
+                          <div className="d-flex align-items-center justify-content-center h-100 bg-dark rounded">
+                            <Film size={48} className="text-muted" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-md-10">
+                      <h4 className="text-light">{review.movieDetails.title || review.movieDetails.name}</h4>
+                      <p className="text-muted">{review.reviewText}</p>
+                      <div className="d-flex align-items-center flex-wrap">
+                        {review.rating && (
+                          <span className="d-flex align-items-center me-3 mb-2">
+                            <Star size={20} className="text-warning me-1" />
+                            <span className="text-light">{review.rating}/5</span>
+                          </span>
+                        )}
+                        <span className="d-flex align-items-center me-3 mb-2">
+                           <BarChart3 size={20} className="text-info me-1" />
+                          <span className="text-light">{review.movieDetails.vote_average.toFixed(1)}</span>
+                        </span>
+                        {review.hasLiked && (
+                          <span className="d-flex align-items-center text-danger mb-2">
+                            <Heart size={20} className="me-1" />
+                            <span>Liked</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted">Aún no has escrito ninguna review.</p>
             )}
           </div>
 

@@ -53,6 +53,8 @@ const MyListsPage = () => {
 
         const listsWithPostersData = await Promise.all(listsWithPostersPromises);
         setListsWithPosters(listsWithPostersData);
+      } else if (response.status === 401 || response.status === 403) {
+        navigate('/login');
       } else {
         setError('Error al cargar las listas');
       }

@@ -47,6 +47,14 @@ const ViewListPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthen
     }
   };
 
+  const handleAuthError = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    navigate('/login');
+    setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
+  };
+
   const loadUserRatings = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -61,6 +69,8 @@ const ViewListPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthen
       if (response.ok) {
         const data = await response.json();
         setUserRatings(data.watchedMovies);
+      } else if (response.status === 401 || response.status === 403) {
+        handleAuthError();
       }
     } catch (error) {
       console.error('Error loading user ratings:', error);

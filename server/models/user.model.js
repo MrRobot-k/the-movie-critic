@@ -22,6 +22,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    slogan: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
   return User;
 };

@@ -153,6 +153,34 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
   }
 });
 
+// Endpoint para actualizar el perfil del usuario (nombre de usuario)
+app.put('/api/users/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { username, slogan } = req.body;
+
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (username && username.trim().length > 0) {
+      user.username = username.trim();
+    }
+
+    user.slogan = slogan || null; // Allow empty slogan
+
+    await user.save();
+
+    res.status(200).json({ message: 'Perfil actualizado exitosamente.', user });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint para calificar una película
 app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
   try {
@@ -248,6 +276,22 @@ app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
       res.status(201).json({ message: 'Me gusta añadido exitosamente.', liked: true });
     }
 
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para obtener todas las películas a las que el usuario autenticado le ha dado 'Me gusta'
+app.get('/api/users/likes', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { count, rows } = await Like.findAndCountAll({
+      where: { userId },
+      attributes: ['mediaId', 'mediaType'],
+    });
+
+    res.status(200).json({ likedItems: rows, totalPages: 1 });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -525,6 +569,48 @@ app.delete('/api/media/:mediaId/review', authenticateToken, async (req, res) => 
   }
 });
 
+// Endpoint para obtener todas las reviews de un usuario
+app.get('/api/users/:userId/reviews', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const reviews = await Review.findAll({
+      where: { userId },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'username', 'profilePicture'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    // For each review, get the rating and like status
+    const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
+      const rating = await Rating.findOne({
+        where: { userId, mediaId: review.mediaId, mediaType: review.mediaType },
+        attributes: ['score'],
+      });
+
+      const like = await Like.findOne({
+        where: { userId, mediaId: review.mediaId, mediaType: review.mediaType },
+      });
+
+      return {
+        ...review.get(),
+        rating: rating ? rating.score : null,
+        hasLiked: !!like,
+      };
+    }));
+
+    res.status(200).json({ reviews: reviewsWithDetails });
+
+  } catch (error) {
+    console.error('Error fetching user reviews:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- List Endpoints ---
 
 // Crear una nueva lista
@@ -558,6 +644,34 @@ app.post('/api/lists', authenticateToken, async (req, res) => {
     res.status(201).json({ message: 'Lista creada exitosamente.', list });
   } catch (error) {
     console.error('Error creating list:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener todas las listas del usuario autenticado
+app.get('/api/users/lists', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const lists = await List.findAll({
+      where: { userId },
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'username', 'profilePicture'],
+        },
+        {
+          model: ListItem,
+          as: 'items',
+          attributes: ['mediaId', 'mediaType', 'order'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.status(200).json({ lists });
+  } catch (error) {
+    console.error('Error fetching user lists:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -929,7 +1043,7 @@ app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'profilePicture'],
+      attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
     });
 
     if (!user) {
