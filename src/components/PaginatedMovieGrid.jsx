@@ -97,7 +97,7 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             return null;
           }
           const detail = await detailRes.json();
-          return { ...detail, userScore: item.score, media_type: item.mediaType };
+          return { ...detail, userScore: item.score, mediaType: item.mediaType };
         });
 
         let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);

@@ -21,7 +21,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [reviews, setReviews] = useState([]);
-
   const [userLists, setUserLists] = useState([]);
   const [topMovies, setTopMovies] = useState([]);
   const [topDirectors, setTopDirectors] = useState([]);
@@ -73,13 +72,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         const data = await likesStatsRes.json();
         setStats(prev => ({ ...prev, likes: data.likedItems.length }));
       }
-
       const watchlistStatsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watchlist`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (watchlistStatsRes.ok) {
         const data = await watchlistStatsRes.json();
         setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies.length }));
       }
-
       // Fetch user lists
       const listsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/lists`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -131,25 +128,19 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         normalizedActors.sort((a, b) => a.order - b.order);
         setTopActors(normalizedActors);
       } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
-
       // Fetch user reviews
       const reviewsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/reviews`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (reviewsRes.ok) {
         const data = await reviewsRes.json();
-        
         const reviewsWithMovieDetails = await Promise.all(data.reviews.map(async (review) => {
           const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
           const detail = await detailRes.json();
           return { ...review, movieDetails: detail };
         }));
-
         setReviews(reviewsWithMovieDetails);
-      } else if (reviewsRes.status === 401 || reviewsRes.status === 403) {
-        handleAuthError();
-      }
-
+      } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
     } catch (err) {
       console.error('Error fetching profile data:', err);
       setError('Error al cargar los datos del perfil.');
@@ -242,17 +233,14 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
-
   const handleSaveProfile = async () => {
     if (!newUsername.trim()) {
       alert('El nombre de usuario no puede estar vacío.');
       return;
     }
-
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     try {
       const response = await fetch(`http://localhost:3000/api/users/profile`, {
         method: 'PUT',
@@ -262,7 +250,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         },
         body: JSON.stringify({ username: newUsername, slogan: newSlogan }),
       });
-
       if (response.ok) {
         const data = await response.json();
         setUsername(data.user.username);
@@ -282,7 +269,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setLoading(false);
     }
   };
-
   const handleRemoveTopMovie = async (mediaId) => {
     const token = localStorage.getItem('token');
     try {
@@ -351,9 +337,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   };
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
-
   const ratingStats = {};
-
   return (
     <div className="container my-5">
       <div className="row">
@@ -378,7 +362,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   style={{ display: 'none' }}
                 />
               </div>
-
               {isOwnProfile && (
                 <div className="d-flex justify-content-center gap-2 mb-3">
                   <button className="btn btn-sm btn-outline-light" onClick={() => fileInputRef.current.click()} title="Cambiar foto de perfil">
@@ -396,7 +379,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   )}
                 </div>
               )}
-
               {isEditingUsername ? (
                 <div className="w-100">
                   <div className="d-flex justify-content-center align-items-center gap-2 mb-2">
@@ -500,7 +482,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <div className="position-relative">
                       <div 
                         className="movie-card position-relative"
-                        onClick={() => getMovieDetails(movie.id, movie.media_type, null, topMovies, index)}
+                        onClick={() => getMovieDetails(movie.id, movie.mediaType, null, topMovies, index)}
                         style={{ cursor: 'pointer' }}
                       >
                         <div className="poster-container">
@@ -683,7 +665,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-
           {/* Sección de Reviews */}
           <h2 className="fw-bold mb-4 text-light">Reviews</h2>
           <div className="mb-5">
@@ -734,7 +715,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               <p className="text-muted">Aún no has escrito ninguna review.</p>
             )}
           </div>
-
           {/* Sección de Películas Vistas */}
           <h2 className="fw-bold mb-4 text-light">Películas Vistas</h2>
           <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
@@ -750,7 +730,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               onToggleWatchlist={onToggleWatchlist}
             />
           </div>
-
           {/* Sección de Mis Listas */}
           <h2 className="fw-bold mb-4 text-light">Listas</h2>
           <div className="mb-5">

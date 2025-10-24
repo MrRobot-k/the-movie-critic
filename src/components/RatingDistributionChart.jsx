@@ -46,38 +46,6 @@ const RatingDistributionChart = ({ ratings }) => {
         return colors[rating] || "#6c757d";
     };
 
-    // Calcular estadísticas adicionales
-    const calculateStats = () => {
-        if (ratings.length === 0) return { average: 0, median: 0, mode: 0 };
-
-        const scores = ratings.map((r) => r.score).sort((a, b) => a - b);
-        const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-        // Mediana
-        const mid = Math.floor(scores.length / 2);
-        const median =
-        scores.length % 2 !== 0
-            ? scores[mid]
-            : (scores[mid - 1] + scores[mid]) / 2;
-
-        // Moda
-        const frequency = {};
-        let maxFreq = 0;
-        let mode = scores[0];
-
-        scores.forEach((score) => {
-        frequency[score] = (frequency[score] || 0) + 1;
-        if (frequency[score] > maxFreq) {
-            maxFreq = frequency[score];
-            mode = score;
-        }
-        });
-
-        return { average, median, mode };
-    };
-
-    const stats = calculateStats();
-
     return (
         <div
         className="rating-distribution-chart p-4 rounded"
@@ -91,29 +59,6 @@ const RatingDistributionChart = ({ ratings }) => {
             </div>
         ) : (
             <>
-            {/* Estadísticas resumen */}
-            <div className="row mb-4">
-                <div className="col-md-4 text-center">
-                <div className="stat-item">
-                    <h5 className="text-warning mb-1">
-                    {stats.average.toFixed(2)}
-                    </h5>
-                    <small className="text-muted">Promedio</small>
-                </div>
-                </div>
-                <div className="col-md-4 text-center">
-                <div className="stat-item">
-                    <h5 className="text-info mb-1">{stats.median.toFixed(2)}</h5>
-                    <small className="text-muted">Mediana</small>
-                </div>
-                </div>
-                <div className="col-md-4 text-center">
-                <div className="stat-item">
-                    <h5 className="text-success mb-1">{stats.mode.toFixed(2)}</h5>
-                    <small className="text-muted">Moda</small>
-                </div>
-                </div>
-            </div>
 
             {/* Gráfico de barras */}
             <div className="chart-container">

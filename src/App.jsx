@@ -57,9 +57,11 @@ export default function App() {
 
   const getMovieDetails = async (id, mediaType, userScore, list = null, index = -1) => {
     try {
+      const effectiveMediaType = mediaType || movie.media_type;
+
       const [detailsRes, creditsRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_BASE_URL}/${mediaType}/${id}?api_key=${API_KEY}&language=es-MX`),
-        fetch(`${import.meta.env.VITE_BASE_URL}/${mediaType}/${id}/credits?api_key=${API_KEY}&language=es-MX`),
+        fetch(`${import.meta.env.VITE_BASE_URL}/${effectiveMediaType}/${id}?api_key=${API_KEY}&language=es-MX`),
+        fetch(`${import.meta.env.VITE_BASE_URL}/${effectiveMediaType}/${id}/credits?api_key=${API_KEY}&language=es-MX`),
       ]);
       const details = await detailsRes.json();
       const credits = await creditsRes.json();
@@ -68,7 +70,7 @@ export default function App() {
         ...details,
         director: credits.crew.find((person) => person.job === "Director"),
         cast: credits.cast,
-        media_type: mediaType,
+        media_type: effectiveMediaType,
         userScore,
       });
 

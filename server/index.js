@@ -810,7 +810,6 @@ app.get('/api/lists', async (req, res) => {
           model: ListItem,
           as: 'items',
           attributes: ['mediaId', 'mediaType', 'order'],
-          limit: 4, // Solo primeras 4 películas para preview
         },
       ],
       order: [['createdAt', 'DESC']],
@@ -953,7 +952,7 @@ app.delete('/api/users/top-directors/:personId', authenticateToken, async (req, 
 
 // --- Top Actors Endpoints ---
 // Endpoint para agregar/actualizar los Top 10 Actores de un usuario
-app.post('/api/user/top-actors', authenticateToken, async (req, res) => {
+app.post('/api/users/top-actors', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const { actors } = req.body; // actors es un array de { actorId, name, profile_path, character, order }
@@ -997,7 +996,7 @@ app.get('/api/users/:userId/top-actors', async (req, res) => {
 });
 
 // Endpoint para eliminar un actor del Top 10 de un usuario
-app.delete('/api/user/top-actors/:actorId', authenticateToken, async (req, res) => {
+app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const { actorId } = req.params;
