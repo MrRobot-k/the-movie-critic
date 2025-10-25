@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
+import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const TopDirectorsEditor = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,21 +13,18 @@ const TopDirectorsEditor = () => {
   const [topDirectors, setTopDirectors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   useEffect(() => {
     fetchCurrentTopDirectors();
   }, []);
-
   const fetchCurrentTopDirectors = async () => {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-directors`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/top-directors`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        // Obtener detalles de cada director y normalizar el ID
         const detailedDirectors = await Promise.all(
           data.topDirectors.map(async (item) => {
             const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
@@ -47,18 +43,15 @@ const TopDirectorsEditor = () => {
       console.error('Error fetching top directors:', error);
     }
   };
-
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
     setLoading(true);
     try {
       const response = await fetch(
         `${BASE_URL}/search/person?api_key=${API_KEY}&language=es-MX&query=${encodeURIComponent(searchQuery)}&page=1`
       );
       const data = await response.json();
-      // Filtrar solo directores con foto
       const directors = data.results.filter(
         person => person.known_for_department === 'Directing' && person.profile_path
       );
@@ -69,60 +62,49 @@ const TopDirectorsEditor = () => {
       setLoading(false);
     }
   };
-
   const addToTopDirectors = (director) => {
     if (topDirectors.length >= 10) {
       alert('Ya tienes 10 directores en tu Top 10. Elimina uno para agregar otro.');
       return;
     }
-
     if (topDirectors.some(d => d.id === director.id)) {
       alert('Este director ya está en tu Top 10.');
       return;
     }
-
     const newDirector = {
       ...director,
       order: topDirectors.length + 1
     };
-
     setTopDirectors([...topDirectors, newDirector]);
     setSearchResults([]);
     setSearchQuery('');
   };
-
   const removeFromTopDirectors = (directorId) => {
     const updatedDirectors = topDirectors
       .filter(director => director.id !== directorId)
       .map((director, index) => ({ ...director, order: index + 1 }));
     setTopDirectors(updatedDirectors);
   };
-
   const onDragEnd = (result) => {
     if (!result.destination) return;
     const items = Array.from(topDirectors);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-
     const reorderedDirectors = items.map((director, index) => ({
       ...director,
       order: index + 1
     }));
-
     setTopDirectors(reorderedDirectors);
   };
-
   const saveTopDirectors = async () => {
     setSaving(true);
     const token = localStorage.getItem('token');
-    
     try {
       const topDirectorsData = topDirectors.map((director, index) => ({
         personId: director.id,
         order: index + 1,
       }));
-
-      const response = await fetch('http://localhost:3000/api/users/top-directors', {
+      const response = await fetch(getApiUrl('/api/users/top-directors'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -130,13 +112,10 @@ const TopDirectorsEditor = () => {
         },
         body: JSON.stringify({ topDirectors: topDirectorsData })
       });
-
       if (response.ok) {
         alert('Top 10 directores guardado exitosamente!');
         navigate('/profile');
-      } else {
-        alert('Error al guardar el Top 10');
-      }
+      } else alert('Error al guardar el Top 10');
     } catch (error) {
       console.error('Error saving top directors:', error);
       alert('Error al guardar el Top 10');
@@ -144,7 +123,6 @@ const TopDirectorsEditor = () => {
       setSaving(false);
     }
   };
-
   return (
     <div className="container my-5">
       <div className="d-flex align-items-center mb-4">
@@ -156,7 +134,6 @@ const TopDirectorsEditor = () => {
         </button>
         <h1 className="fw-bold mb-0">Editar Mis 10 Mejores Directores</h1>
       </div>
-
       {/* Búsqueda */}
       <div className="card mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
         <div className="card-body">
@@ -179,7 +156,6 @@ const TopDirectorsEditor = () => {
               </button>
             </div>
           </form>
-
           {/* Resultados de búsqueda */}
           {searchResults.length > 0 && (
             <div className="mt-3">
@@ -217,7 +193,6 @@ const TopDirectorsEditor = () => {
           )}
         </div>
       </div>
-
       {/* Top 10 Actual */}
       <div className="card" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
         <div className="card-header">
@@ -284,7 +259,6 @@ const TopDirectorsEditor = () => {
               </Droppable>
             </DragDropContext>
           )}
-
           {/* Botones de acción */}
           <div className="d-flex justify-content-between mt-4">
             <button
@@ -306,5 +280,4 @@ const TopDirectorsEditor = () => {
     </div>
   );
 };
-
 export default TopDirectorsEditor;

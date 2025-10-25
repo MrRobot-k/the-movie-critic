@@ -3,15 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Search, X, GripVertical, Trash2, Heart, Eye } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import MovieDetailsModal from '../components/MovieDetailsModal';
-
+import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const CreateListPage = () => {
   const navigate = useNavigate();
   const { listId } = useParams();
   const isEditMode = !!listId;
-
   const [listName, setListName] = useState('');
   const [description, setDescription] = useState('');
   const [isNumbered, setIsNumbered] = useState(false);
@@ -24,15 +22,9 @@ const CreateListPage = () => {
   const [sortBy, setSortBy] = useState('custom'); // 'custom', 'release_date.desc', 'vote_average.desc' etc.
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Cargar datos si estamos en modo edición
   useEffect(() => {
-    if (isEditMode) {
-      loadList();
-    }
+    if (isEditMode) loadList();
   }, [listId]);
-
-  // Ordenar películas cuando cambia el criterio de ordenamiento
   useEffect(() => {
     const sortMovies = () => {
       const sortedMovies = [...movies];
@@ -50,33 +42,23 @@ const CreateListPage = () => {
           sortedMovies.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
           break;
         default:
-          // No hacer nada para 'custom'
           return;
       }
       setMovies(sortedMovies);
     };
-
-    if (sortBy !== 'custom') {
-      sortMovies();
-    }
+    if (sortBy !== 'custom') sortMovies();
   }, [sortBy]);
-
   const loadList = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-
     try {
-      const response = await fetch(`http://localhost:3000/api/lists/${listId}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
+      const response = await fetch(getApiUrl(`/api/lists/${listId}`));
       if (response.ok) {
         const data = await response.json();
         const list = data.list;
         setListName(list.name);
         setDescription(list.description);
         setIsNumbered(list.isNumbered);
-
         // Cargar detalles de las películas
         if (list.items && list.items.length > 0) {
           const movieDetailsPromises = list.items
@@ -88,7 +70,6 @@ const CreateListPage = () => {
               const detail = await detailRes.json();
               return { ...detail, media_type: item.mediaType };
             });
-
           const movieDetails = await Promise.all(movieDetailsPromises);
           setMovies(movieDetails);
         }
@@ -97,7 +78,6 @@ const CreateListPage = () => {
       console.error('Error loading list:', error);
     }
   };
-
   const getMovieDetails = async (movieId, mediaType) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_BASE_URL}/${mediaType}/${movieId}?api_key=${API_KEY}&language=es-MX&append_to_response=credits,videos`);
@@ -108,18 +88,15 @@ const CreateListPage = () => {
       console.error("Error fetching movie details:", error);
     }
   };
-
   const handleCloseDetails = () => {
     setIsModalOpen(false);
     setSelectedMovie(null);
   };
-
   const searchMovies = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
     }
-
     setIsSearching(true);
     try {
       const response = await fetch(
@@ -136,34 +113,25 @@ const CreateListPage = () => {
       setIsSearching(false);
     }
   };
-
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      if (searchQuery) {
-        searchMovies();
-      } else {
-        setSearchResults([]);
-      }
+      if (searchQuery) searchMovies();
+      else setSearchResults([]);
     }, 500);
-
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
-
   const getMovieUserData = async (movie) => {
     const token = localStorage.getItem('token');
     if (!token) return movie;
-
     try {
       const [ratingRes, likeRes, watchlistRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/media/${movie.id}/rating?mediaType=${movie.media_type}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/api/media/${movie.id}/likeStatus?mediaType=${movie.media_type}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/api/media/${movie.id}/watchlistStatus?mediaType=${movie.media_type}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(getApiUrl(`/api/media/${movie.id}/rating?mediaType=${movie.media_type}`), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(getApiUrl(`/api/media/${movie.id}/likeStatus?mediaType=${movie.media_type}`), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(getApiUrl(`/api/media/${movie.id}/watchlistStatus?mediaType=${movie.media_type}`), { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
-
       const ratingData = ratingRes.ok ? await ratingRes.json() : null;
       const likeData = likeRes.ok ? await likeRes.json() : null;
       const watchlistData = watchlistRes.ok ? await watchlistRes.json() : null;
-
       return {
         ...movie,
         userScore: ratingData?.rating?.score,
@@ -175,11 +143,9 @@ const CreateListPage = () => {
       return movie; // Devuelve la película sin datos de usuario si hay un error
     }
   };
-
   const handleSortChange = (e) => {
     setSortBy(e.target.value);
   };
-
   const addMovie = async (movie) => {
     // Verificar si ya está en la lista
     const exists = movies.find(m => m.id === movie.id && m.media_type === movie.media_type);
@@ -190,39 +156,32 @@ const CreateListPage = () => {
       setSearchResults([]);
     }
   };
-
   const removeMovie = (index) => {
     const newMovies = [...movies];
     newMovies.splice(index, 1);
     setMovies(newMovies);
   };
-
   const moveMovie = (fromIndex, toIndex) => {
     const newMovies = [...movies];
     const [removed] = newMovies.splice(fromIndex, 1);
     newMovies.splice(toIndex, 0, removed);
     setMovies(newMovies);
   };
-
   const handleDragEnd = (result) => {
     if (!result.destination) return;
     moveMovie(result.source.index, result.destination.index);
   };
-
   const saveList = async () => {
     if (!listName.trim()) {
       setError('El nombre de la lista es requerido');
       return;
     }
-
     if (movies.length === 0) {
       setError('Debes agregar al menos una película a la lista');
       return;
     }
-
     setLoading(true);
     setError('');
-
     const token = localStorage.getItem('token');
     const listData = {
       name: listName.trim(),
@@ -233,13 +192,9 @@ const CreateListPage = () => {
         mediaType: movie.media_type,
       })),
     };
-
     try {
-      const url = isEditMode
-        ? `http://localhost:3000/api/lists/${listId}`
-        : 'http://localhost:3000/api/lists';
+      const url = isEditMode ? getApiUrl(`/api/lists/${listId}`) : getApiUrl('/api/lists');
       const method = isEditMode ? 'PUT' : 'POST';
-
       const response = await fetch(url, {
         method,
         headers: {
@@ -248,7 +203,6 @@ const CreateListPage = () => {
         },
         body: JSON.stringify(listData),
       });
-
       if (response.ok) {
         navigate('/mis-listas');
       } else {
@@ -271,7 +225,6 @@ const CreateListPage = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="container" style={{ paddingTop: '80px', maxWidth: '900px' }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -280,9 +233,7 @@ const CreateListPage = () => {
           Cancelar
         </button>
       </div>
-
       {error && <div className="alert alert-danger">{error}</div>}
-
       {/* Formulario de la lista */}
       <div className="mb-4">
         <div className="mb-3">
@@ -295,7 +246,6 @@ const CreateListPage = () => {
             onChange={(e) => setListName(e.target.value)}
           />
         </div>
-
         <div className="mb-3">
           <label className="form-label">Descripción</label>
           <textarea
@@ -306,7 +256,6 @@ const CreateListPage = () => {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
-
         <div className="form-check mb-4">
           <input
             className="form-check-input"
@@ -320,7 +269,6 @@ const CreateListPage = () => {
           </label>
         </div>
       </div>
-
       {/* Buscador de películas */}
       <div className="mb-4">
         <h5 className="mb-3">Agregar Películas</h5>
@@ -337,7 +285,6 @@ const CreateListPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
           {/* Resultados de búsqueda */}
           {searchResults.length > 0 && (
             <div className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000 }}>
@@ -371,7 +318,6 @@ const CreateListPage = () => {
           )}
         </div>
       </div>
-
       {/* Lista de películas agregadas */}
       <div className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -389,7 +335,6 @@ const CreateListPage = () => {
             </select>
           </div>
         </div>
-
         {movies.length === 0 ? (
           <div className="alert alert-info">
             No has agregado películas aún. Usa el buscador arriba para agregar películas a tu lista.
@@ -433,7 +378,6 @@ const CreateListPage = () => {
           </div>
         )}
       </div>
-
       {/* Botones de acción */}
       <div className="d-flex gap-2 mb-5">
         <button
@@ -451,7 +395,6 @@ const CreateListPage = () => {
           Cancelar
         </button>
       </div>
-
       {isModalOpen && selectedMovie && (
         <MovieDetailsModal
           movie={selectedMovie}
@@ -462,5 +405,4 @@ const CreateListPage = () => {
     </div>
   );
 };
-
 export default CreateListPage;

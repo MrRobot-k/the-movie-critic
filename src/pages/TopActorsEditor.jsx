@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
+import { getApiUrl } from '../config/api';
+
 const TopActorsEditor = () => {
   const [actors, setActors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +23,7 @@ const TopActorsEditor = () => {
     if (!token || !userId) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-actors`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/top-actors`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -120,7 +122,7 @@ const TopActorsEditor = () => {
         order: index + 1,
       }));
 
-      const response = await fetch('http://localhost:3000/api/users/top-actors', {
+      const response = await fetch(getApiUrl('/api/users/top-actors'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -10,17 +10,14 @@ const jwtSecret = process.env.JWT_SECRET;
 const multer = require('multer');
 const path = require('path');
 const { put } = require('@vercel/blob');
-
 // Global error handling for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
-
 // Global error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -30,11 +27,9 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // ✅ CONFIGURACIÓN CORRECTA PARA SUPABASE
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
@@ -50,9 +45,8 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     acquire: 30000,
     idle: 10000
   },
-  logging: false // Cambia a console.log si quieres ver los queries
+  logging: console.log // Cambia a console.log si quieres ver los queries
 });
-
 const User = require('./models/user.model')(sequelize);
 const Rating = require('./models/rating.model')(sequelize);
 const Like = require('./models/like.model')(sequelize);
@@ -63,7 +57,6 @@ const ListItem = require('./models/listItem.model')(sequelize);
 const TopMovie = require('./models/topMovie.model')(sequelize);
 const TopDirector = require('./models/topDirector.model')(sequelize);
 const UserTopActors = require('./models/userTopActors.model')(sequelize);
-
 // Define associations
 User.hasMany(Rating, { foreignKey: 'userId' });
 Rating.belongsTo(User, { foreignKey: 'userId' });
@@ -83,20 +76,16 @@ User.hasMany(List, { foreignKey: 'userId' });
 List.belongsTo(User, { foreignKey: 'userId' });
 List.hasMany(ListItem, { foreignKey: 'listId', as: 'items' });
 ListItem.belongsTo(List, { foreignKey: 'listId' });
-
 // ✅ FUNCIÓN DE CONEXIÓN MEJORADA
 const testDbConnection = async () => {
   try {
     console.log('🔄 Intentando conectar a Supabase...');
     console.log('DATABASE_URL presente:', !!process.env.DATABASE_URL);
     console.log('JWT_SECRET presente:', !!process.env.JWT_SECRET);
-    
     await sequelize.authenticate();
     console.log('✅ Conexión a Supabase establecida exitosamente.');
-    
     await sequelize.sync({ alter: true });
     console.log('✅ Todos los modelos sincronizados correctamente.');
-    
     app.listen(port, () => {
       console.log(`✅ Servidor corriendo en puerto: ${port}`);
     });
@@ -104,9 +93,7 @@ const testDbConnection = async () => {
     console.error('❌ Error al conectar a la base de datos:');
     console.error('Nombre del error:', error.name);
     console.error('Mensaje:', error.message);
-    if (error.parent) {
-      console.error('Error de PostgreSQL:', error.parent.message);
-    }
+    if (error.parent) console.error('Error de PostgreSQL:', error.parent.message);
     console.error('\n💡 Verifica:');
     console.error('1. Que DATABASE_URL en .env sea correcta');
     console.error('2. Que JWT_SECRET esté definido en .env');
@@ -114,10 +101,8 @@ const testDbConnection = async () => {
     process.exit(1);
   }
 };
-
 // Iniciar conexión
 testDbConnection();
-
 // Middleware para autenticar el token JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -129,7 +114,6 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
-
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -140,7 +124,6 @@ app.post('/register', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -154,17 +137,12 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.put('/api/users/profile-picture', authenticateToken, upload.single('profilePicture'), async (req, res) => {
   try {
     const userId = req.user.id;
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
     const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     user.profilePicture = `/uploads/${req.file.filename}`;
     await user.save();
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
@@ -173,7 +151,6 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
     res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 });
-
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -189,7 +166,6 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -210,7 +186,6 @@ app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -223,7 +198,6 @@ app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/watched', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -236,7 +210,6 @@ app.get('/api/users/watched', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/watched', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -249,7 +222,6 @@ app.get('/api/users/:userId/watched', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -268,7 +240,6 @@ app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/likes', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -281,7 +252,6 @@ app.get('/api/users/likes', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/likes', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -294,7 +264,6 @@ app.get('/api/users/:userId/likes', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/likeStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -306,7 +275,6 @@ app.get('/api/media/:mediaId/likeStatus', authenticateToken, async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/watchedStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -319,7 +287,6 @@ app.get('/api/media/:mediaId/watchedStatus', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/media/:mediaId/watchlist', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -339,7 +306,6 @@ app.post('/api/media/:mediaId/watchlist', authenticateToken, async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -352,7 +318,6 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -365,7 +330,6 @@ app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -383,7 +347,6 @@ app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.put('/api/users/watchlist/privacy', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -396,7 +359,6 @@ app.put('/api/users/watchlist/privacy', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -418,7 +380,6 @@ app.post('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/myReview', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -432,7 +393,6 @@ app.get('/api/media/:mediaId/myReview', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/media/:mediaId/reviews', async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -474,7 +434,6 @@ app.get('/api/media/:mediaId/reviews', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.delete('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -490,7 +449,6 @@ app.delete('/api/media/:mediaId/review', authenticateToken, async (req, res) => 
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/reviews', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -524,7 +482,6 @@ app.get('/api/users/:userId/reviews', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/lists', authenticateToken, async (req, res) => {
   try {
     const { name, description, isNumbered, items } = req.body;
@@ -552,7 +509,6 @@ app.post('/api/lists', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/lists', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -577,7 +533,6 @@ app.get('/api/users/lists', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/lists', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -602,7 +557,6 @@ app.get('/api/users/:userId/lists', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/lists/:listId', async (req, res) => {
   try {
     const { listId } = req.params;
@@ -627,7 +581,6 @@ app.get('/api/lists/:listId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.put('/api/lists/:listId', authenticateToken, async (req, res) => {
   try {
     const { listId } = req.params;
@@ -657,7 +610,6 @@ app.put('/api/lists/:listId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.delete('/api/lists/:listId', authenticateToken, async (req, res) => {
   try {
     const { listId } = req.params;
@@ -671,7 +623,6 @@ app.delete('/api/lists/:listId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/lists', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -704,7 +655,6 @@ app.get('/api/lists', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/users/top-movies', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -724,7 +674,6 @@ app.post('/api/users/top-movies', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/top-movies', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -738,7 +687,6 @@ app.get('/api/users/:userId/top-movies', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.delete('/api/users/top-movies/:mediaId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -753,7 +701,6 @@ app.delete('/api/users/top-movies/:mediaId', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/users/top-directors', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -772,7 +719,6 @@ app.post('/api/users/top-directors', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/top-directors', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -786,7 +732,6 @@ app.get('/api/users/:userId/top-directors', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.delete('/api/users/top-directors/:personId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -801,7 +746,6 @@ app.delete('/api/users/top-directors/:personId', authenticateToken, async (req, 
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/users/top-actors', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -823,7 +767,6 @@ app.post('/api/users/top-actors', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId/top-actors', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -837,7 +780,6 @@ app.get('/api/users/:userId/top-actors', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -852,7 +794,6 @@ app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -872,7 +813,6 @@ app.get('/api/users/search', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;

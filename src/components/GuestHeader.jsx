@@ -1,19 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-
 const GuestHeader = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
         {/* Logo/Brand */}
         <Link className="navbar-brand fs-4 fw-bold me-4" to="/">The Movie Critic</Link>
-
         {/* Link de Listas - siempre visible en desktop */}
         <Link className="nav-link text-white d-none d-lg-block me-3" to="/listas">Listas</Link>
-
         {/* Spacer para empujar los botones a la derecha */}
         <div className="d-none d-lg-block flex-grow-1"></div>
-
         {/* Auth buttons - siempre visibles en desktop */}
         <div className="d-none d-lg-flex align-items-center">
           <Link className="nav-link text-white me-2" to="/login">
@@ -23,7 +19,6 @@ const GuestHeader = () => {
             Registrarse
           </Link>
         </div>
-
         {/* Toggle button for mobile */}
         <button 
           className="navbar-toggler ms-auto" 
@@ -36,7 +31,6 @@ const GuestHeader = () => {
         >
           <span className="navbar-toggler-icon"></span>
         </button>
-
         {/* Mobile menu */}
         <div className="collapse navbar-collapse d-lg-none" id="navbarNavMobile">
           <ul className="navbar-nav">
@@ -57,5 +51,4 @@ const GuestHeader = () => {
     </nav>
   );
 };
-
 export default GuestHeader;

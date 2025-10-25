@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Film, User } from 'lucide-react';
-
+import { getApiUrl } from '../config/api';
 const API_KEY = '3f46d222391647fd5bae513ec8dd5ca4';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const AllListsPage = () => {
   const navigate = useNavigate();
   const [lists, setLists] = useState([]);
   const [listsWithPosters, setListsWithPosters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   useEffect(() => {
     loadAllLists();
   }, []);
-
   const loadAllLists = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/lists');
-
+      const response = await fetch(getApiUrl('/api/lists'));
       if (response.ok) {
         const data = await response.json();
         setLists(data.lists);
-
         const listsWithPostersPromises = data.lists.map(async (list) => {
           const items = list.items.slice(0, 4);
           const postersPromises = items.map(async (item) => {
@@ -37,16 +32,12 @@ const AllListsPage = () => {
               return null;
             }
           });
-
           const posters = await Promise.all(postersPromises);
           return { ...list, posters: posters.filter(p => p) };
         });
-
         const listsWithPostersData = await Promise.all(listsWithPostersPromises);
         setListsWithPosters(listsWithPostersData);
-      } else {
-        setError('Error al cargar las listas');
-      }
+      } else setError('Error al cargar las listas');
     } catch (error) {
       setError('Error al cargar las listas');
       console.error('Error loading lists:', error);
@@ -54,23 +45,17 @@ const AllListsPage = () => {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
+  if (loading) return (
       <div className="container" style={{ paddingTop: '80px' }}>
         <div className="text-center">Cargando...</div>
       </div>
     );
-  }
-
   return (
     <div className="container" style={{ paddingTop: '80px' }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Todas las Listas</h2>
       </div>
-
       {error && <div className="alert alert-danger">{error}</div>}
-
       {listsWithPosters.length === 0 ? (
         <div className="text-center py-5">
           <Film size={64} className="text-muted mb-3" />
@@ -102,7 +87,6 @@ const AllListsPage = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="card-body">
                   <Link
                     to={`/lista/${list.id}`}
@@ -110,16 +94,14 @@ const AllListsPage = () => {
                   >
                     <h5 className="card-title text-light mb-2">{list.name}</h5>
                   </Link>
-
                   <div className="d-flex align-items-center mb-2">
                     {list.User.profilePicture ? (
-                      <img src={`http://localhost:3000${list.User.profilePicture}?t=${new Date().getTime()}`} alt="Profile" className="rounded-circle me-2" style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
+                      <img src={getApiUrl(list.User.profilePicture)} alt="Profile" className="rounded-circle me-2" style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
                     ) : (
                       <img src="/placeholder-profile.svg" alt="Profile" className="rounded-circle me-2" style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
                     )}
                     <span className="text-muted small">{list.User.username}</span>
                   </div>
-
                   {list.description && (
                     <p className="card-text text-muted small">
                       {list.description.length > 100
@@ -127,7 +109,6 @@ const AllListsPage = () => {
                         : list.description}
                     </p>
                   )}
-
                   <div className="d-flex align-items-center justify-content-between mt-3">
                     <div>
                       <small className="text-muted">
@@ -139,7 +120,6 @@ const AllListsPage = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="card-footer bg-transparent border-top border-secondary">
                   <small className="text-muted">
                     Creada el {new Date(list.createdAt).toLocaleDateString('es-ES')}
@@ -153,5 +133,4 @@ const AllListsPage = () => {
     </div>
   );
 };
-
 export default AllListsPage;

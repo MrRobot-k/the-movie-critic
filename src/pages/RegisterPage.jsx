@@ -1,40 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { getApiUrl } from '../config/api';
 const RegisterPage = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
     try {
-      const response = await fetch('http://localhost:3000/register', {
+      const response = await fetch(getApiUrl('/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, email, password }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al registrar la cuenta.');
-      }
-
-      // Si el registro es exitoso, redirige a la página de login
+      if (!response.ok) throw new Error(data.error || 'Error al registrar la cuenta.');
       navigate('/login');
-
     } catch (err) {
       setError(err.message);
     }
   };
-
   return (
     <div className="container" style={{ marginTop: '100px' }}>
       <h2>Crear Cuenta</h2>
@@ -78,5 +68,4 @@ const RegisterPage = () => {
     </div>
   );
 };
-
 export default RegisterPage;

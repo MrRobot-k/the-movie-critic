@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
-
+import { getApiUrl } from '../config/api';
 const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) => {
   const [userLists, setUserLists] = useState([]);
   const [newListName, setNewListName] = useState('');
@@ -8,17 +8,13 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   useEffect(() => {
-    if (isOpen) {
-      fetchUserLists();
-    }
+    if (isOpen) fetchUserLists();
   }, [isOpen]);
-
   const fetchUserLists = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:3000/api/users/lists', {
+      const response = await fetch(getApiUrl('/api/users/lists'), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -29,19 +25,16 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
       console.error('Error fetching user lists:', err);
     }
   };
-
   const handleCreateList = async () => {
     if (!newListName.trim()) {
       setError('El nombre de la lista es requerido.');
       return;
     }
-
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     try {
-      const response = await fetch('http://localhost:3000/api/lists', {
+      const response = await fetch(getApiUrl('/api/lists'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -53,7 +46,6 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
           items: [{ mediaId, mediaType }]
         }),
       });
-
       if (response.ok) {
         setNewListName('');
         setNewListDescription('');
@@ -71,40 +63,28 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
       setLoading(false);
     }
   };
-
   const handleAddToExistingList = async (listId) => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     try {
-      // Primero obtener la lista actual
-      const listResponse = await fetch(`http://localhost:3000/api/lists/${listId}`);
-      if (!listResponse.ok) {
-        throw new Error('No se pudo obtener la lista.');
-      }
-
+      const listResponse = await fetch(getApiUrl(`/api/lists/${listId}`));
+      if (!listResponse.ok) throw new Error('No se pudo obtener la lista.');
       const listData = await listResponse.json();
       const currentItems = listData.list.items || [];
-
-      // Verificar si la película ya está en la lista
       const alreadyInList = currentItems.some(item => 
         item.mediaId === mediaId && item.mediaType === mediaType
       );
-
       if (alreadyInList) {
         setError('Esta película/serie ya está en la lista.');
         setLoading(false);
         return;
       }
-
-      // Agregar la nueva película a la lista
       const updatedItems = [
         ...currentItems,
         { mediaId, mediaType, order: currentItems.length + 1 }
       ];
-
-      const updateResponse = await fetch(`http://localhost:3000/api/lists/${listId}`, {
+      const updateResponse = await fetch(getApiUrl(`/api/lists/${listId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -117,10 +97,8 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
           items: updatedItems
         }),
       });
-
-      if (updateResponse.ok) {
-        onAddToList();
-      } else {
+      if (updateResponse.ok) onAddToList();
+      else {
         const errorData = await updateResponse.json();
         setError(errorData.error || 'Error al agregar a la lista.');
       }
@@ -131,28 +109,19 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
       setLoading(false);
     }
   };
-
   const handleRemoveFromList = async (listId) => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     try {
-      // Obtener la lista actual
-      const listResponse = await fetch(`http://localhost:3000/api/lists/${listId}`);
-      if (!listResponse.ok) {
-        throw new Error('No se pudo obtener la lista.');
-      }
-
+      const listResponse = await fetch(getApiUrl(`/api/lists/${listId}`));
+      if (!listResponse.ok) throw new Error('No se pudo obtener la lista.');
       const listData = await listResponse.json();
       const currentItems = listData.list.items || [];
-
-      // Filtrar la película de la lista
       const updatedItems = currentItems.filter(item => 
         !(item.mediaId === mediaId && item.mediaType === mediaType)
       );
-
-      const updateResponse = await fetch(`http://localhost:3000/api/lists/${listId}`, {
+      const updateResponse = await fetch(getApiUrl(`/api/lists/${listId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +134,6 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
           items: updatedItems
         }),
       });
-
       if (updateResponse.ok) {
         await fetchUserLists();
         onAddToList();
@@ -180,9 +148,7 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
       setLoading(false);
     }
   };
-
   if (!isOpen) return null;
-
   return (
     <div className="modal-backdrop-dark" onClick={onClose}>
       <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
@@ -198,7 +164,6 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
                   {error}
                 </div>
               )}
-
               {/* Formulario para crear nueva lista */}
               {showCreateForm ? (
                 <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#1e2328' }}>
@@ -254,7 +219,6 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
                   Crear Nueva Lista
                 </button>
               )}
-
               {/* Listas existentes */}
               <h6 className="text-light mb-3">Tus Listas</h6>
               {userLists.length === 0 ? (
@@ -265,7 +229,6 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
                     const isInList = list.items?.some(item => 
                       item.mediaId === mediaId && item.mediaType === mediaType
                     );
-
                     return (
                       <div key={list.id} className="card mb-2" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
                         <div className="card-body py-2">
@@ -304,5 +267,4 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
     </div>
   );
 };
-
 export default AddToListModal;

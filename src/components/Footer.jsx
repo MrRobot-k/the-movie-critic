@@ -1,6 +1,5 @@
 
 import React from 'react';
-
 const Footer = () => {
   return (
     <footer className="app-footer mt-5">
@@ -15,7 +14,6 @@ const Footer = () => {
               Powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB API</a>
             </p>
           </div>
-
           <div className="col-md-3 mb-3">
             <h6 className="text-white mb-3">Enlaces</h6>
             <ul className="list-unstyled">
@@ -33,7 +31,6 @@ const Footer = () => {
               </li>
             </ul>
           </div>
-
           <div className="col-md-3 mb-3">
             <h6 className="text-white mb-3">Información</h6>
             <ul className="list-unstyled">
@@ -55,9 +52,7 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-
         <hr className="border-secondary my-4" />
-
         <div className="row">
           <div className="col-12 text-center">
             <p className="mb-0 small">
@@ -72,5 +67,4 @@ const Footer = () => {
     </footer>
   );
 };
-
 export default Footer;

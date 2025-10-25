@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Trash2, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
+import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const TopMoviesEditor = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,21 +13,18 @@ const TopMoviesEditor = () => {
   const [topMovies, setTopMovies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   useEffect(() => {
     fetchCurrentTopMovies();
   }, []);
-
   const fetchCurrentTopMovies = async () => {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${userId}/top-movies`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/top-movies`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        // Obtener detalles de cada película y normalizar
         const detailedMovies = await Promise.all(
           data.topMovies.map(async (item) => {
             const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
@@ -48,18 +44,15 @@ const TopMoviesEditor = () => {
       console.error('Error fetching top movies:', error);
     }
   };
-
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
     setLoading(true);
     try {
       const response = await fetch(
         `${BASE_URL}/search/multi?api_key=${API_KEY}&language=es-MX&query=${encodeURIComponent(searchQuery)}&page=1`
       );
       const data = await response.json();
-      // Filtrar solo películas
       const movies = data.results.filter(
         item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
       );
@@ -70,61 +63,50 @@ const TopMoviesEditor = () => {
       setLoading(false);
     }
   };
-
   const addToTopMovies = (movie) => {
     if (topMovies.length >= 10) {
       alert('Ya tienes 10 películas en tu Top 10. Elimina una para agregar otra.');
       return;
     }
-
     if (topMovies.some(m => m.id === movie.id)) {
       alert('Esta película ya está en tu Top 10.');
       return;
     }
-
     const newMovie = {
       ...movie,
       order: topMovies.length + 1
     };
-
     setTopMovies([...topMovies, newMovie]);
     setSearchResults([]);
     setSearchQuery('');
   };
-
   const removeFromTopMovies = (movieId) => {
     const updatedMovies = topMovies
       .filter(movie => movie.id !== movieId)
       .map((movie, index) => ({ ...movie, order: index + 1 }));
     setTopMovies(updatedMovies);
   };
-
   const onDragEnd = (result) => {
     if (!result.destination) return;
     const items = Array.from(topMovies);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-
     const reorderedMovies = items.map((movie, index) => ({
       ...movie,
       order: index + 1
     }));
-
     setTopMovies(reorderedMovies);
   };
-
   const saveTopMovies = async () => {
     setSaving(true);
     const token = localStorage.getItem('token');
-    
     try {
       const topMoviesData = topMovies.map((movie, index) => ({
         mediaId: movie.id,
         mediaType: movie.media_type || 'movie',
         order: index + 1,
       }));
-
-      const response = await fetch('http://localhost:3000/api/users/top-movies', {
+      const response = await fetch(getApiUrl('/api/users/top-movies'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -132,13 +114,10 @@ const TopMoviesEditor = () => {
         },
         body: JSON.stringify({ topMovies: topMoviesData })
       });
-
       if (response.ok) {
         alert('Top 10 películas guardado exitosamente!');
         navigate('/profile');
-      } else {
-        alert('Error al guardar el Top 10');
-      }
+      } else alert('Error al guardar el Top 10');
     } catch (error) {
       console.error('Error saving top movies:', error);
       alert('Error al guardar el Top 10');
@@ -146,7 +125,6 @@ const TopMoviesEditor = () => {
       setSaving(false);
     }
   };
-
   return (
     <div className="container my-5">
       <div className="d-flex align-items-center mb-4">
@@ -158,7 +136,6 @@ const TopMoviesEditor = () => {
         </button>
         <h1 className="fw-bold mb-0">Editar Mis 10 Mejores Películas</h1>
       </div>
-
       {/* Búsqueda */}
       <div className="card mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
         <div className="card-body">
@@ -181,7 +158,6 @@ const TopMoviesEditor = () => {
               </button>
             </div>
           </form>
-
           {/* Resultados de búsqueda */}
           {searchResults.length > 0 && (
             <div className="mt-3">
@@ -220,7 +196,6 @@ const TopMoviesEditor = () => {
           )}
         </div>
       </div>
-
       {/* Top 10 Actual */}
       <div className="card" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
         <div className="card-header">
@@ -288,7 +263,6 @@ const TopMoviesEditor = () => {
               </Droppable>
             </DragDropContext>
           )}
-
           {/* Botones de acción */}
           <div className="d-flex justify-content-between mt-4">
             <button
@@ -310,5 +284,4 @@ const TopMoviesEditor = () => {
     </div>
   );
 };
-
 export default TopMoviesEditor;

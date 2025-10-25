@@ -4,6 +4,7 @@ import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plu
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import PaginatedMovieGrid from '../components/PaginatedMovieGrid';
 import RatingDistributionChart from '../components/RatingDistributionChart';
+import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
@@ -50,43 +51,37 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       return;
     }
     try {
-      // Fetch user profile
-      const userRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}`, { headers: { 'Authorization': `Bearer ${token}` }, });
+      const userRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}`));
       if (userRes.ok) {
         const userData = await userRes.json();
         setUsername(userData.username);
         setSlogan(userData.slogan || '');
-        setProfilePicture(userData.profilePicture ? `http://localhost:3000${userData.profilePicture}` : null);
+        setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-      // Fetch user ratings para el gráfico
-      const ratingsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watched`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`));
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
         setUserRatings(data.watchedMovies || []);
         setStats(prev => ({ ...prev, watched: data.watchedMovies.length }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-      const likesStatsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/likes`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { headers: { 'Authorization': `Bearer ${token}` } });
       if (likesStatsRes.ok) {
         const data = await likesStatsRes.json();
         setStats(prev => ({ ...prev, likes: data.likedItems.length }));
       }
-      const watchlistStatsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/watchlist`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watchlist`), { headers: { 'Authorization': `Bearer ${token}` } });
       if (watchlistStatsRes.ok) {
         const data = await watchlistStatsRes.json();
         setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies.length }));
       }
-      // Fetch user lists
-      const listsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/lists`, {
+      const listsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/lists`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (listsRes.ok) {
         const data = await listsRes.json();
         setUserLists(data.lists);
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
-      // Fetch user top movies
-      const topMoviesRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-movies`, {
+      const topMoviesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-movies`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topMoviesRes.ok) {
@@ -100,8 +95,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         movies.sort((a, b) => a.order - b.order);
         setTopMovies(movies);
       } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
-      // Fetch user top directors
-      const topDirectorsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-directors`, {
+      const topDirectorsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-directors`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topDirectorsRes.ok) {
@@ -115,8 +109,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         directors.sort((a, b) => a.order - b.order);
         setTopDirectors(directors);
       } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
-      // Fetch user top actors
-      const topActorsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/top-actors`, {
+      const topActorsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-actors`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topActorsRes.ok) {
@@ -128,8 +121,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         normalizedActors.sort((a, b) => a.order - b.order);
         setTopActors(normalizedActors);
       } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
-      // Fetch user reviews
-      const reviewsRes = await fetch(`http://localhost:3000/api/users/${userIdToFetch}/reviews`, {
+      const reviewsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/reviews`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (reviewsRes.ok) {
@@ -176,7 +168,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     const formData = new FormData();
     formData.append('profilePicture', selectedFile);
     try {
-      const response = await fetch(`http://localhost:3000/api/users/profile-picture`, {
+      const response = await fetch(getApiUrl(`api/users/profile-picture`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -185,13 +177,12 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (response.ok) {
         const data = await response.json();
-        setProfilePicture(`http://localhost:3000${data.profilePicture}`);
+        setProfilePicture(getApiUrl(data.profilePicture));
         setProfilePicturePreview(null);
         setSelectedFile(null);
         alert('Foto de perfil actualizada exitosamente.');
-      } else if (response.status === 401 || response.status === 403) {
-        handleAuthError();
-      } else {
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
         const errorData = await response.json();
         setError(errorData.message || 'Error al actualizar la foto de perfil.');
       }
@@ -207,7 +198,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     setError('');
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/profile-picture`, {
+      const response = await fetch(getApiUrl(`/api/users/profile-picture`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -220,9 +211,8 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setProfilePicturePreview(null);
         setSelectedFile(null);
         alert('Foto de perfil eliminada exitosamente.');
-      } else if (response.status === 401 || response.status === 403) {
-        handleAuthError();
-      } else {
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
         const errorData = await response.json();
         setError(errorData.message || 'Error al eliminar la foto de perfil.');
       }
@@ -242,7 +232,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     setError('');
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/profile`, {
+      const response = await fetch(getApiUrl(`/api/users/profile`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -256,9 +246,8 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setSlogan(data.user.slogan);
         setIsEditingUsername(false);
         localStorage.setItem('username', data.user.username);
-      } else if (response.status === 401 || response.status === 403) {
-        handleAuthError();
-      } else {
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
         const errorData = await response.json();
         setError(errorData.message || 'Error al actualizar el perfil.');
       }
@@ -272,7 +261,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const handleRemoveTopMovie = async (mediaId) => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/top-movies/${mediaId}`, {
+      const response = await fetch(getApiUrl(`/api/users/top-movies/${mediaId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -294,7 +283,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const handleRemoveTopDirector = async (personId) => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/users/top-directors/${personId}`, {
+      const response = await fetch(getApiUrl(`/api/users/top-directors/${personId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -316,7 +305,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const handleRemoveTopActor = async (actorId) => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/user/top-actors/${actorId}`, {
+      const response = await fetch(getApiUrl(`/api/user/top-actors/${actorId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
+import { getApiUrl } from '../config/api';
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
@@ -9,18 +9,17 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
   const dropdownRef = useRef(null);
-
   useEffect(() => {
     const fetchProfilePicture = async () => {
       if (!userId || isNaN(Number(userId))) return;
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+        const response = await fetch(getApiUrl(`/api/users/${userId}`), {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (response.ok) {
           const userData = await response.json();
-          setProfilePicture(userData.profilePicture ? `http://localhost:3000${userData.profilePicture}` : null);
+          setProfilePicture(userData.profilePicture ? getApiUrl(`${userData.profilePicture}`) : null);
         }
       } catch (error) {
         console.error('Error fetching profile picture:', error);
@@ -28,19 +27,15 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     };
     fetchProfilePicture();
   }, [userId]);
-
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setShowDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
@@ -48,14 +43,10 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     setIsAuthenticated(false);
     navigate('/login');
   };
-
   const handleUserSearch = (e) => {
     e.preventDefault();
-    if (userSearchQuery.trim()) {
-      navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
-    }
+    if (userSearchQuery.trim()) navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
   };
-
   return (
     <nav style={{
       backgroundColor: '#14181c',
@@ -84,7 +75,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         }}>
           The Movie Critic
         </Link>
-
         {/* Listas link */}
         <Link to="/listas" style={{
           color: 'rgba(255, 255, 255, 0.8)',
@@ -93,7 +83,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         }}>
           Listas
         </Link>
-
         {/* Search form */}
         <form onSubmit={handleSearch} style={{
           flex: 1,
@@ -116,7 +105,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
             }}
           />
         </form>
-
         {/* User Search form */}
         <form onSubmit={handleUserSearch} style={{
           flex: 1,
@@ -138,7 +126,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
             }}
           />
         </form>
-
         {/* Profile dropdown */}
         <div 
           style={{ position: 'relative' }}
@@ -171,7 +158,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
             />
             {username || 'angel_eyes'}
           </a>
-          
           {showDropdown && (
             <ul style={{
               position: 'absolute',
@@ -211,7 +197,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     </nav>
   );
 };
-
 const dropdownItemStyle = {
   display: 'block',
   padding: '0.5rem 1rem',
@@ -219,5 +204,4 @@ const dropdownItemStyle = {
   textDecoration: 'none',
   transition: 'background-color 0.2s'
 };
-
 export default AuthenticatedHeader;

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 
+import { getApiUrl } from '../config/api';
+
 const UserSearchPage = () => {
   const [searchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
@@ -14,7 +16,7 @@ const UserSearchPage = () => {
         setLoading(true);
         setError('');
         try {
-          const response = await fetch(`http://localhost:3000/api/users/search?q=${encodeURIComponent(query)}`);
+          const response = await fetch(getApiUrl(`/api/users/search?q=${encodeURIComponent(query)}`));
           if (response.ok) {
             const data = await response.json();
             setUsers(data);
@@ -41,7 +43,7 @@ const UserSearchPage = () => {
           {users.map(user => (
             <Link key={user.id} to={`/profile/${user.id}`} className="list-group-item list-group-item-action d-flex align-items-center">
               <img
-                src={user.profilePicture ? `http://localhost:3000${user.profilePicture}` : '/placeholder-profile.svg'}
+                src={user.profilePicture ? getApiUrl(user.profilePicture) : '/placeholder-profile.svg'}
                 alt={user.username}
                 className="rounded-circle me-3"
                 style={{ width: '50px', height: '50px', objectFit: 'cover' }}

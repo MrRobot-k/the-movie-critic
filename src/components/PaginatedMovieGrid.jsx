@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MovieDetailsModal from './MovieDetailsModal';
-
+import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, getMovieDetails, selectedMovie, onCloseDetails, query, clearSearch, moviesData }) => {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Valor inicial según el tipo de página
   const isWatchedPage = endpoint === '/api/users/watched';
   const defaultSort = isWatchedPage ? 'user_rating.desc' : endpoint.startsWith('/api') ? 'release_date.desc' : 'vote_average.desc';
   const [sortBy, setSortBy] = useState(defaultSort);
@@ -21,51 +19,40 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedDecade, setSelectedDecade] = useState('');
   const navigate = useNavigate();
-
   useEffect(() => {
     const fetchGenresAndCountries = async () => {
       try {
-        // Fetch Genres
         const genreUrl = `${import.meta.env.VITE_BASE_URL}/genre/movie/list?api_key=${API_KEY}&language=es-MX`;
         const genreResponse = await fetch(genreUrl);
         const genreData = await genreResponse.json();
         setGenres(genreData.genres || []);
-
-        // Fetch Countries
         const countryUrl = `${import.meta.env.VITE_BASE_URL}/configuration/countries?api_key=${API_KEY}&language=es-MX`;
         const countryResponse = await fetch(countryUrl);
         const countryData = await countryResponse.json();
         setCountries(countryData || []);
-
       } catch (err) {
         console.error('Error fetching genres or countries:', err);
       }
     };
-
     fetchGenresAndCountries();
   }, []);
-
   const fetchMovies = async () => {
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-
     if (!token && endpoint.startsWith('/api')) {
       setError('No autenticado. Por favor, inicia sesión.');
       setLoading(false);
       navigate('/login');
       return;
     }
-
     try {
       let allMovies = [];
-
       if (endpoint.startsWith('/api')) {
-        const url = `http://localhost:3000${endpoint}`;
+        const url = getApiUrl(endpoint);
         const response = await fetch(url, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         });
-
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
             localStorage.removeItem('token');
@@ -76,19 +63,11 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           const errorData = await response.json();
           throw new Error(errorData.error || "Error al obtener las películas.");
         }
-
         const data = await response.json();
-
-        if (data.hasOwnProperty('watchedMovies')) {
-          allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
-        } else if (data.hasOwnProperty('likedItems')) {
-          allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
-        } else if (data.hasOwnProperty('watchlistedMovies')) {
-          allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
-        }
-
+        if (data.hasOwnProperty('watchedMovies')) allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('likedItems')) allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('watchlistedMovies')) allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
         allMovies = allMovies.filter(item => item.id && item.mediaType);
-
         const itemDetailsPromises = allMovies.map(async (item) => {
           const detailUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.id}?api_key=${API_KEY}&language=es-MX`;
           const detailRes = await fetch(detailUrl);
@@ -99,16 +78,9 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           const detail = await detailRes.json();
           return { ...detail, userScore: item.score, mediaType: item.mediaType };
         });
-
         let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
-
-        // Apply filters
-        if (selectedGenre) {
-          detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
-        }
-        if (selectedCountry) {
-          detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
-        }
+        if (selectedGenre) detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
+        if (selectedCountry) detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
         if (selectedDecade) {
           const startYear = parseInt(selectedDecade);
           const endYear = startYear + 9;
@@ -119,54 +91,33 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             return releaseYear >= startYear && releaseYear <= endYear;
           });
         }
-
         const sortedItems = sortMoviesLocally(detailedItems, sortBy);
-
-        // Calcular paginación local
         const itemsPerPage = 24;
         const totalItems = sortedItems.length;
         const totalPagesCalculated = Math.ceil(totalItems / itemsPerPage);
         setTotalPages(totalPagesCalculated);
-
-        // Obtener solo los items de la página actual
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         const paginatedItems = sortedItems.slice(startIndex, endIndex);
-
         setMovies(paginatedItems);
-
-      } else { // TMDB API calls
-        // TMDB devuelve 20 resultados por página, pero queremos 24
-        // Entonces necesitamos cargar múltiples páginas de TMDB para completar 24 películas
+      } else { 
         const moviesPerTmdbPage = 20;
         const desiredMoviesPerPage = 24;
-
-        // Calcular qué páginas de TMDB necesitamos cargar
         const startIndex = (currentPage - 1) * desiredMoviesPerPage;
         const firstTmdbPage = Math.floor(startIndex / moviesPerTmdbPage) + 1;
         const secondTmdbPage = firstTmdbPage + 1;
-
         let urlParams = `api_key=${API_KEY}&language=es-MX`;
-
-        if (query) {
-          urlParams += `&query=${encodeURIComponent(query)}`;
-        } else {
-          if (sortBy !== 'classics') {
-            urlParams += `&sort_by=${sortBy}`;
-          }
-          if (selectedGenre) {
-            urlParams += `&with_genres=${selectedGenre}`;
-          }
-          if (selectedCountry) {
-            urlParams += `&with_origin_country=${selectedCountry}`;
-          }
+        if (query) urlParams += `&query=${encodeURIComponent(query)}`;
+        else {
+          if (sortBy !== 'classics') urlParams += `&sort_by=${sortBy}`;
+          if (selectedGenre) urlParams += `&with_genres=${selectedGenre}`;
+          if (selectedCountry) urlParams += `&with_origin_country=${selectedCountry}`;
           if (selectedDecade) {
             const startDate = `${selectedDecade}-01-01`;
             const endDate = `${parseInt(selectedDecade) + 9}-12-31`;
             urlParams += `&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}`;
           }
         }
-
         let url1, url2;
         if (query) {
           url1 = `${import.meta.env.VITE_BASE_URL}/search/multi?${urlParams}&page=${firstTmdbPage}`;
@@ -178,37 +129,23 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           url1 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${firstTmdbPage}`;
           url2 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${secondTmdbPage}`;
         }
-
         const [response1, response2] = await Promise.all([
           fetch(url1),
           fetch(url2)
         ]);
-
-        if (!response1.ok) {
-          throw new Error('Error al obtener las películas de TMDB.');
-        }
-
+        if (!response1.ok) throw new Error('Error al obtener las películas de TMDB.');
         const data1 = await response1.json();
         const data2 = response2.ok ? await response2.json() : { results: [] };
-
-        // Combinar los resultados de ambas páginas
         const combinedResults = [...data1.results, ...data2.results];
-
-        // Calcular el offset dentro de los resultados combinados
         const offset = startIndex % moviesPerTmdbPage;
-
-        // Extraer exactamente 24 películas desde el offset
         allMovies = combinedResults.slice(offset, offset + desiredMoviesPerPage).map(item => ({
           ...item,
           mediaType: item.media_type || (item.title ? 'movie' : 'tv')
         }));
-
-        // Calcular el total de páginas basado en el total de resultados de TMDB
         const totalTmdbResults = data1.total_results;
         setTotalPages(Math.ceil(totalTmdbResults / desiredMoviesPerPage));
         setMovies(allMovies);
       }
-
       if (allMovies.length === 0) {
         setMovies([]);
         setLoading(false);
@@ -221,47 +158,35 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
       setLoading(false);
     }
   };
-
   const sortMoviesLocally = (items, sortOption) => {
     const sorted = [...items];
-
     switch(sortOption) {
       case 'vote_average.desc':
         return sorted.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
-
       case 'popularity.desc':
         return sorted.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
-
       case 'release_date.desc':
         return sorted.sort((a, b) => {
           const dateA = a.release_date || a.first_air_date || '';
           const dateB = b.release_date || b.first_air_date || '';
           return dateB.localeCompare(dateA);
         });
-
       case 'user_rating.desc':
         return sorted.sort((a, b) => (b.userScore || 0) - (a.userScore || 0));
-
       case 'title.asc':
         return sorted.sort((a, b) => {
           const titleA = (a.title || a.name || '').toLowerCase();
           const titleB = (b.title || b.name || '').toLowerCase();
           return titleA.localeCompare(titleB);
         });
-
       default:
         return sorted;
     }
   };
-
   useEffect(() => {
-    if (moviesData) {
-      processMoviesData(moviesData);
-    } else {
-      fetchMovies();
-    }
+    if (moviesData) processMoviesData(moviesData);
+    else fetchMovies();
   }, [navigate, currentPage, sortBy, endpoint, query, selectedMovie, selectedGenre, selectedCountry, selectedDecade, moviesData]);
-
   const processMoviesData = async (data) => {
     setLoading(true);
     setError('');
@@ -276,16 +201,9 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         const detail = await detailRes.json();
         return { ...detail, userScore: item.score, mediaType: item.mediaType };
       });
-
       let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
-      // Apply filters, sorting, and pagination as in fetchMovies
-      // This part can be extracted to a helper function to avoid repetition
-      if (selectedGenre) {
-        detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
-      }
-      if (selectedCountry) {
-        detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
-      }
+      if (selectedGenre) detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
+      if (selectedCountry) detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
       if (selectedDecade) {
         const startYear = parseInt(selectedDecade);
         const endYear = startYear + 9;
@@ -296,7 +214,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           return releaseYear >= startYear && releaseYear <= endYear;
         });
       }
-
       const sortedItems = sortMoviesLocally(detailedItems, sortBy);
       const itemsPerPage = 24;
       const totalItems = sortedItems.length;
@@ -314,36 +231,21 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
     }
   };
   const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
+    if (newPage > 0 && newPage <= totalPages) setCurrentPage(newPage);
   };
-
   const handleSortChange = (e) => {
     setSortBy(e.target.value);
     setCurrentPage(1);
   };
-
   const handleMovieRated = (mediaId) => {
-    if (endpoint === '/api/users/watchlist') {
-      setMovies(prevMovies => prevMovies.filter(movie => movie.id !== mediaId));
-    }
+    if (endpoint === '/api/users/watchlist') setMovies(prevMovies => prevMovies.filter(movie => movie.id !== mediaId));
   };
-
-  if (loading) {
-    return <div className="container" style={{ paddingTop: '80px' }}><div className="text-center">Cargando...</div></div>;
-  }
-
-  if (error) {
-    return <div className="container" style={{ paddingTop: '80px' }}><div className="alert alert-danger">{error}</div></div>;
-  }
-
-  // Determinar qué opciones de ordenamiento mostrar según la página
+  if (loading) return <div className="container" style={{ paddingTop: '80px' }}><div className="text-center">Cargando...</div></div>;
+  if (error) return <div className="container" style={{ paddingTop: '80px' }}><div className="alert alert-danger">{error}</div></div>;
   const isUserDataPage = endpoint.startsWith('/api');
   const isWatchedPageRender = endpoint === '/api/users/watched';
   const isWatchlistPage = endpoint === '/api/users/watchlist';
   const isLikesPage = endpoint === '/api/users/likes';
-
   const decades = [
     { value: '2020', label: '2020s' },
     { value: '2010', label: '2010s' },
@@ -353,7 +255,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
     { value: '1970', label: '1970s' },
     { value: '1960', label: '1960s' },
   ];
-
   return (
     <div className="container" style={{ paddingTop: '80px' }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -430,7 +331,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           )}
         </div>
       </div>
-
       {movies.length === 0 ? (
         <p>No hay películas para mostrar.</p>
       ) : (
@@ -458,7 +358,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           ))}
         </div>
       )}
-
       {selectedMovie && (
         <MovieDetailsModal
           movie={selectedMovie}
@@ -470,7 +369,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           onMovieRated={handleMovieRated}
         />
       )}
-
       <div className="d-flex justify-content-center mt-4">
         <nav>
           <ul className="pagination">
@@ -509,5 +407,4 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
     </div>
   );
 };
-
 export default PaginatedMovieGrid;

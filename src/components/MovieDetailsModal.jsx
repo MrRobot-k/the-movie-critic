@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Heart, X, ChevronLeft, ChevronRight } from 'lucide-react';
-
+import { getApiUrl } from '../config/api';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, onMovieRated, movieList, currentIndex, onNavigate }) => {
   if (!movie) return null;
-
   // Estados del componente
   const [hoverRating, setHoverRating] = useState(0);
   const [userRating, setUserRating] = useState(0);
@@ -21,35 +19,27 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
   const [allReviews, setAllReviews] = useState([]);
   const [reviewError, setReviewError] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
-
   // Obtener título y detalles según el tipo de contenido
   const getTitle = () => {
     return movie.title || movie.name || 'Título no disponible';
   };
-
   const getOriginalTitle = () => {
     return movie.original_title || movie.original_name;
   };
-
   const getReleaseDate = () => {
     return movie.release_date || movie.first_air_date;
   };
-
   const getRuntime = () => {
     if (movie.runtime) return movie.runtime; // Para películas
-    if (movie.episode_run_time && movie.episode_run_time.length > 0) {
-      return movie.episode_run_time[0]; // Para series (tomamos el primer tiempo de episodio)
-    }
+    if (movie.episode_run_time && movie.episode_run_time.length > 0) return movie.episode_run_time[0]; // Para series (tomamos el primer tiempo de episodio)
     return null;
   };
-
   const userId = localStorage.getItem('userId');
-
   const fetchUserRating = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return 0;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/rating?mediaType=${movie.media_type}`, {
+      const response = await fetch(getApiUrl(`api/media/${movie.id}/rating?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -59,18 +49,15 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
           setIsWatched(true);
           return data.rating.score;
         }
-      } else if (response.status === 404) {
-        setUserRating(0);
-      }
+      } else if (response.status === 404) setUserRating(0);
     } catch (error) { console.error('Error fetching user rating:', error); }
     return 0;
   };
-
   const fetchUserLikeStatus = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/likeStatus?mediaType=${movie.media_type}`, {
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/likeStatus?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -79,12 +66,11 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
       } else if (response.status === 404) setIsLiked(false);
     } catch (error) { console.error('Error fetching user like status:', error); }
   };
-
   const fetchUserWatchlistStatus = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/watchlistStatus?mediaType=${movie.media_type}`, {
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/watchlistStatus?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -93,28 +79,24 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
       } else if (response.status === 404) setIsWatchlisted(false);
     } catch (error) { console.error('Error fetching user watchlist status:', error); }
   };
-
   const fetchUserWatchedStatus = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/watchedStatus?mediaType=${movie.media_type}`, {
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/watchedStatus?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
         setIsWatched(data.isWatched);
-      } else if (response.status === 404) {
-        setIsWatched(false);
-      }
+      } else if (response.status === 404) setIsWatched(false);
     } catch (error) { console.error('Error fetching user watched status:', error); }
   };
-
   const fetchMyReview = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/myReview?mediaType=${movie.media_type}`, {
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/myReview?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -126,18 +108,16 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
       }
     } catch (error) { console.error('Error fetching my review:', error); }
   };
-
   const fetchAllReviews = async () => {
     if (!movie.id) return;
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/reviews?mediaType=${movie.media_type}`);
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/reviews?mediaType=${movie.media_type}`));
       if (response.ok) {
         const data = await response.json();
         setAllReviews(data.reviews);
       }
     } catch (error) { console.error('Error fetching reviews:', error); }
   };
-
   useEffect(() => {
     setHoverRating(0);
     setUserRating(0);
@@ -153,61 +133,46 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     setAllReviews([]);
     setReviewError('');
     setShowReviewForm(false);
-
     const fetchAllData = async () => {
       if (!movie.id) return;
-
       if (isAuthenticated) {
         let rating = 0;
         if (movie.userScore) {
           setUserRating(movie.userScore);
           if (movie.userScore > 0) setIsWatched(true);
           rating = movie.userScore;
-        } else {
-          rating = await fetchUserRating();
-        }
-
-        if (rating === 0) {
-          await fetchUserWatchedStatus();
-        }
-
+        } else rating = await fetchUserRating();
+        if (rating === 0) await fetchUserWatchedStatus();
         await Promise.all([
           fetchUserLikeStatus(),
           fetchMyReview(),
           fetchUserWatchlistStatus()
         ]);
       }
-
       await fetchAllReviews();
     };
-
     fetchAllData();
-
     document.body.classList.add('modal-is-open');
     return () => {
       document.body.classList.remove('modal-is-open');
     };
   }, [movie.id, isAuthenticated]);
-
   const handleSubmitReview = async () => {
     if (!isAuthenticated) {
       setReviewError('Debes iniciar sesión para escribir un review.');
       return;
     }
-
     if (!reviewText.trim()) {
       setReviewError('El review no puede estar vacío.');
       return;
     }
-
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3000/api/media/${movie.id}/review`, {
+      const response = await fetch(getApiUrl(`/api/media/${movie.id}/review`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ mediaType: movie.media_type, reviewText: reviewText.trim() }),
       });
-
       if (response.ok) {
         setMyReview(reviewText.trim());
         setShowReviewForm(false);
@@ -222,7 +187,6 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
       console.error('Error submitting review:', error);
     }
   };
-
   const handleStarClick = async (score) => {
     if (!isAuthenticated) {
       setRatingError('Debes iniciar sesión para calificar una película.');
@@ -231,18 +195,13 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     setRatingError('');
     setUserRating(score);
     await onRateMovie(movie.id, movie.media_type, score);
-    if (!isWatched) {
-      setIsWatched(true);
-    }
-    if (onMovieRated) {
-      onMovieRated(movie.id);
-    }
+    if (!isWatched) setIsWatched(true);
+    if (onMovieRated) onMovieRated(movie.id);
     if (isWatchlisted) {
       await onToggleWatchlist(movie.id, movie.media_type, false);
       setIsWatchlisted(false);
     }
   };
-
   const handleLikeClick = async () => {
     if (!isAuthenticated) {
       setLikeError("Debes iniciar sesión para dar 'Me gusta'.");
@@ -252,7 +211,6 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     setIsLiked(!isLiked);
     await onToggleLike(movie.id, movie.media_type, !isLiked);
   };
-
   const handleWatchlistClick = async () => {
     if (!isAuthenticated) {
       setWatchlistError("Debes iniciar sesión para añadir a la Watchlist.");
@@ -262,7 +220,6 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     setIsWatchlisted(!isWatchlisted);
     await onToggleWatchlist(movie.id, movie.media_type, !isWatchlisted);
   };
-
   const handleWatchedClick = async () => {
     if (!isAuthenticated) {
       setWatchedError("Debes iniciar sesión para marcar una película como vista.");
@@ -271,15 +228,13 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     setWatchedError('');
     const newWatchedStatus = !isWatched;
     setIsWatched(newWatchedStatus);
-
     if (!newWatchedStatus && userRating > 0) {
       setUserRating(0);
       await onRateMovie(movie.id, movie.media_type, 0);
     }
-
     const token = localStorage.getItem('token');
     try {
-      await fetch(`http://localhost:3000/api/media/${movie.id}/watched`, {
+      await fetch(getApiUrl(`/api/media/${movie.id}/watched`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ mediaType: movie.media_type, watched: newWatchedStatus }),
@@ -287,40 +242,28 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     } catch (error) {
       console.error('Error updating watched status:', error);
       setIsWatched(!newWatchedStatus);
-      if (!newWatchedStatus && userRating > 0) {
-         fetchUserRating();
-      }
+      if (!newWatchedStatus && userRating > 0) fetchUserRating();
     }
   };
-
-  // Función para obtener la URL de la imagen de perfil
   const getProfileImageUrl = (profilePicture) => {
     console.log('🖼️ ProfilePicture recibida:', profilePicture);
-    
     if (!profilePicture) {
       console.log('❌ No hay profilePicture, usando placeholder');
       return '/placeholder-profile.svg';
     }
-    
-    // Si la URL ya es completa (empieza con http:// o https://)
     if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
       console.log('✅ URL completa:', profilePicture);
       return profilePicture;
     }
-    
-    // Si es una ruta relativa, agregar el dominio del backend
-    const fullUrl = `http://localhost:3000${profilePicture.startsWith('/') ? '' : '/'}${profilePicture}`;
+    const fullUrl = getApiUrl(`${profilePicture.startsWith('/') ? '' : '/'}${profilePicture}`);
     console.log('🔗 URL construida:', fullUrl);
     return fullUrl;
   };
-
   const backdropUrl = movie.backdrop_path
     ? `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`
     : '/placeholder-image.svg';
-
   const runtime = getRuntime();
   const releaseDate = getReleaseDate();
-
   return (
     <div className="modal-backdrop-dark" onClick={onClose}>
       {movieList && onNavigate && (
@@ -341,7 +284,6 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
           </button>
         </>
       )}
-
       <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
         <div className="modal-dialog modal-dialog-centered modal-xl modal-custom-width" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content modal-content-custom" style={{ position: 'relative' }}>
@@ -513,7 +455,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
                             <div className="d-flex justify-content-between align-items-start mb-2">
                               <div className="d-flex align-items-center">
                                 <img
-                                  src={review.user.profilePicture ? `http://localhost:3000${review.user.profilePicture}?t=${new Date().getTime()}` : '/placeholder-profile.svg'}
+                                  src={getApiUrl(review.user.profilePicture)}
                                   alt={`${review.user.username} profile`}
                                   className="rounded-circle me-2" 
                                   style={{ width: '30px', height: '30px', objectFit: 'cover' }}
@@ -545,5 +487,4 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     </div>
   );
 };
-
 export default MovieDetailsModal;
