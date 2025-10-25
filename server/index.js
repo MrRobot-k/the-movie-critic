@@ -35,11 +35,9 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ CONFIGURACIÓN CORREGIDA PARA SUPABASE
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
-  host: process.env.DB_HOST,
+// ✅ CONFIGURACIÓN CORRECTA PARA SUPABASE
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
-  port: process.env.DB_PORT,
   dialectOptions: {
     ssl: {
       require: true,
@@ -90,9 +88,8 @@ ListItem.belongsTo(List, { foreignKey: 'listId' });
 const testDbConnection = async () => {
   try {
     console.log('🔄 Intentando conectar a Supabase...');
-    console.log('Host:', process.env.DB_HOST);
-    console.log('Database:', process.env.DB_NAME);
-    console.log('User:', process.env.DB_USER);
+    console.log('DATABASE_URL presente:', !!process.env.DATABASE_URL);
+    console.log('JWT_SECRET presente:', !!process.env.JWT_SECRET);
     
     await sequelize.authenticate();
     console.log('✅ Conexión a Supabase establecida exitosamente.');
@@ -111,9 +108,10 @@ const testDbConnection = async () => {
       console.error('Error de PostgreSQL:', error.parent.message);
     }
     console.error('\n💡 Verifica:');
-    console.error('1. Que las credenciales en .env sean correctas');
-    console.error('2. Que el host de Supabase sea accesible');
-    console.error('3. Que la contraseña no tenga caracteres especiales sin escapar');
+    console.error('1. Que DATABASE_URL en .env sea correcta');
+    console.error('2. Que JWT_SECRET esté definido en .env');
+    console.error('3. Que Supabase esté accesible');
+    process.exit(1);
   }
 };
 
