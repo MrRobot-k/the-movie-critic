@@ -21,7 +21,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
         navigate('/');
       } else alert(data.error || 'Error al iniciar sesión');
     } catch (err) {
-      console.error('Error:', error);
+      console.error('Error:', err);
       alert('Error al conectar con el servidor');
     }
   };
