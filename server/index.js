@@ -575,6 +575,18 @@ app.get('/api/users/:userId/lists', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+app.get('/api/users/:userId/ratings-with-scores', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const ratings = await Rating.findAll({
+      where: { userId },
+      attributes: ['mediaId', 'mediaType', 'score'],
+    });
+    res.status(200).json({ ratings });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 app.get('/api/lists/:listId', async (req, res) => {
   try {
     const { listId } = req.params;

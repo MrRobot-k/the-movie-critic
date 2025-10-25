@@ -58,11 +58,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setSlogan(userData.slogan || '');
         setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`), { headers: { 'Authorization': `Bearer ${token}` } });
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/ratings-with-scores`), { headers: { 'Authorization': `Bearer ${token}` } });
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
         setUserRatings(data.watchedMovies || []);
-        setStats(prev => ({ ...prev, watched: data.watchedMovies.length }));
+        setStats(prev => ({ ...prev, watched: data.ratings.length }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
       const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { headers: { 'Authorization': `Bearer ${token}` } });
       if (likesStatsRes.ok) {
