@@ -9,19 +9,16 @@ const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET;
 const multer = require('multer');
 const path = require('path');
-// Configuración de Multer para la subida de imágenes
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Las imágenes se guardarán en la carpeta 'uploads/'
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname); // Nombre único para cada archivo
-  },
-});
+const { put } = require('@vercel/blob');
+
+// Configurar Multer para almacenar en memoria
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Servir archivos estáticos desde la carpeta upload
+// La ruta estática '/uploads' ya no es necesaria ya que los archivos se sirven desde Vercel Blob
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
   dialect: 'postgres',
@@ -107,16 +104,27 @@ app.post('/login', async (req, res) => {
 app.put('/api/users/profile-picture', authenticateToken, upload.single('profilePicture'), async (req, res) => {
   try {
     const userId = req.user.id;
-    const profilePicturePath = req.file ? `/uploads/${req.file.filename}` : null;
-    if (!profilePicturePath) return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
+    }
+
+    const filename = req.file.originalname;
+    const blob = await put(filename, req.file.buffer, {
+      access: 'public',
+    });
+
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    user.profilePicture = profilePicturePath;
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    user.profilePicture = blob.url; // Guardar la URL de Vercel Blob
     await user.save();
+
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
   } catch (error) {
     console.error('Error updating profile picture:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 });
 // Endpoint para actualizar el perfil del usuario (nombre de usuario)
