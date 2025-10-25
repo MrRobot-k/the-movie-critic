@@ -58,7 +58,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setSlogan(userData.slogan || '');
         setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`));
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`), { headers: { 'Authorization': `Bearer ${token}` } });
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
         setUserRatings(data.watchedMovies || []);

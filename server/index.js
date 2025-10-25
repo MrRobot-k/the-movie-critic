@@ -131,7 +131,7 @@ app.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'Credenciales inválidas' });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Credenciales inválidas' });
-    const token = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: '365d' });
     res.status(200).json({ message: 'Inicio de sesión exitoso', token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -166,6 +166,24 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Ruta para eliminar un usuario
+app.delete('/api/users/delete', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    await user.destroy(); // Esto eliminará al usuario y sus datos asociados gracias a ON DELETE CASCADE
+
+    res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
+  } catch (error) {
+    console.error('Error al eliminar el usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
