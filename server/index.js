@@ -11,6 +11,16 @@ const multer = require('multer');
 const path = require('path');
 const { put } = require('@vercel/blob');
 
+// Global error handling for unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Global error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -24,11 +34,27 @@ const upload = multer({ storage: storage });
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ✅ CONFIGURACIÓN CORREGIDA PARA SUPABASE
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
   dialect: 'postgres',
   port: process.env.DB_PORT,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false
+    }
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  logging: false // Cambia a console.log si quieres ver los queries
 });
+
 const User = require('./models/user.model')(sequelize);
 const Rating = require('./models/rating.model')(sequelize);
 const Like = require('./models/like.model')(sequelize);
@@ -39,6 +65,7 @@ const ListItem = require('./models/listItem.model')(sequelize);
 const TopMovie = require('./models/topMovie.model')(sequelize);
 const TopDirector = require('./models/topDirector.model')(sequelize);
 const UserTopActors = require('./models/userTopActors.model')(sequelize);
+
 // Define associations
 User.hasMany(Rating, { foreignKey: 'userId' });
 Rating.belongsTo(User, { foreignKey: 'userId' });
@@ -58,29 +85,53 @@ User.hasMany(List, { foreignKey: 'userId' });
 List.belongsTo(User, { foreignKey: 'userId' });
 List.hasMany(ListItem, { foreignKey: 'listId', as: 'items' });
 ListItem.belongsTo(List, { foreignKey: 'listId' });
+
+// ✅ FUNCIÓN DE CONEXIÓN MEJORADA
 const testDbConnection = async () => {
   try {
+    console.log('🔄 Intentando conectar a Supabase...');
+    console.log('Host:', process.env.DB_HOST);
+    console.log('Database:', process.env.DB_NAME);
+    console.log('User:', process.env.DB_USER);
+    
     await sequelize.authenticate();
-    console.log('Connection has been established successfully.');
+    console.log('✅ Conexión a Supabase establecida exitosamente.');
+    
     await sequelize.sync({ alter: true });
-    console.log('All models were synchronized successfully.');
+    console.log('✅ Todos los modelos sincronizados correctamente.');
+    
+    app.listen(port, () => {
+      console.log(`✅ Servidor corriendo en puerto: ${port}`);
+    });
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    process.exit(1);
+    console.error('❌ Error al conectar a la base de datos:');
+    console.error('Nombre del error:', error.name);
+    console.error('Mensaje:', error.message);
+    if (error.parent) {
+      console.error('Error de PostgreSQL:', error.parent.message);
+    }
+    console.error('\n💡 Verifica:');
+    console.error('1. Que las credenciales en .env sean correctas');
+    console.error('2. Que el host de Supabase sea accesible');
+    console.error('3. Que la contraseña no tenga caracteres especiales sin escapar');
   }
 };
+
+// Iniciar conexión
 testDbConnection();
+
 // Middleware para autenticar el token JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401); // No token
+  if (token == null) return res.sendStatus(401);
   jwt.verify(token, jwtSecret, (err, user) => {
-    if (err) return res.sendStatus(403); // Token no válido
+    if (err) return res.sendStatus(403);
     req.user = user;
     next();
   });
 };
+
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -91,6 +142,7 @@ app.post('/register', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -98,36 +150,32 @@ app.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'Credenciales inválidas' });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Credenciales inválidas' });
-    // Generar JWT
     const token = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: '1h' });
     res.status(200).json({ message: 'Inicio de sesión exitoso', token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para actualizar la foto de perfil del usuario
+
 app.put('/api/users/profile-picture', authenticateToken, upload.single('profilePicture'), async (req, res) => {
   try {
     const userId = req.user.id;
     if (!req.file) {
       return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
     }
-
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
-
     user.profilePicture = `/uploads/${req.file.filename}`;
     await user.save();
-
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
   } catch (error) {
     console.error('Error updating profile picture:', error);
     res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 });
-// Endpoint para actualizar el perfil del usuario (nombre de usuario)
+
 app.put('/api/users/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -135,7 +183,7 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     if (username && username.trim().length > 0) user.username = username.trim();
-    user.slogan = slogan || null; // Allow empty slogan
+    user.slogan = slogan || null;
     await user.save();
     res.status(200).json({ message: 'Perfil actualizado exitosamente.', user });
   } catch (error) {
@@ -143,7 +191,7 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para calificar una película
+
 app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -164,7 +212,7 @@ app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener la calificación de un usuario para un medio
+
 app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -177,32 +225,33 @@ app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas calificadas por el usuario autenticado
+
 app.get('/api/users/watched', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const { count, rows } = await Rating.findAndCountAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType', 'score'],
+      attributes: ['mediaId', 'mediaType'],
     });
     res.status(200).json({ watchedMovies: rows, totalPages: 1 });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas calificadas por un usuario específico
+
 app.get('/api/users/:userId/watched', async (req, res) => {
   try {
     const { userId } = req.params;
     const { count, rows } = await Rating.findAndCountAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType', 'score'],
+      attributes: ['mediaId', 'mediaType'],
     });
     res.status(200).json({ watchedMovies: rows, totalPages: 1 });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -221,7 +270,7 @@ app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas a las que el usuario autenticado le ha dado 'Me gusta'
+
 app.get('/api/users/likes', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -234,7 +283,7 @@ app.get('/api/users/likes', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas a las que un usuario le ha dado 'Me gusta'
+
 app.get('/api/users/:userId/likes', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -247,7 +296,7 @@ app.get('/api/users/:userId/likes', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para verificar si el usuario le ha dado 'Me gusta' a una película/serie
+
 app.get('/api/media/:mediaId/likeStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -259,6 +308,7 @@ app.get('/api/media/:mediaId/likeStatus', authenticateToken, async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
+
 app.get('/api/media/:mediaId/watchedStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -271,8 +321,7 @@ app.get('/api/media/:mediaId/watchedStatus', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-// --- Watchlist Endpoints ---
-// Endpoint para añadir o quitar una película de la watchlist
+
 app.post('/api/media/:mediaId/watchlist', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -292,7 +341,7 @@ app.post('/api/media/:mediaId/watchlist', authenticateToken, async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener el estado de watchlist de una película para un usuario
+
 app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -305,7 +354,7 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas en la watchlist del usuario autenticado
+
 app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -318,7 +367,7 @@ app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las películas en la watchlist de un usuario
+
 app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -336,7 +385,7 @@ app.get('/api/users/:userId/watchlist', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para actualizar la privacidad de la watchlist
+
 app.put('/api/users/watchlist/privacy', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -349,8 +398,7 @@ app.put('/api/users/watchlist/privacy', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// --- Review Endpoints ---
-// Endpoint para crear o actualizar una review
+
 app.post('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -372,7 +420,7 @@ app.post('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener el review del usuario autenticado para un medio
+
 app.get('/api/media/:mediaId/myReview', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -386,7 +434,7 @@ app.get('/api/media/:mediaId/myReview', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las reviews de un medio (con información del usuario)
+
 app.get('/api/media/:mediaId/reviews', async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -402,7 +450,6 @@ app.get('/api/media/:mediaId/reviews', async (req, res) => {
       ],
       order: [['createdAt', 'DESC']],
     });
-    // Obtener ratings y likes para cada review
     const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
       const rating = await Rating.findOne({
         where: { userId: review.userId, mediaId, mediaType },
@@ -429,7 +476,7 @@ app.get('/api/media/:mediaId/reviews', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para eliminar un review
+
 app.delete('/api/media/:mediaId/review', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -445,7 +492,7 @@ app.delete('/api/media/:mediaId/review', authenticateToken, async (req, res) => 
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener todas las reviews de un usuario
+
 app.get('/api/users/:userId/reviews', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -459,7 +506,6 @@ app.get('/api/users/:userId/reviews', async (req, res) => {
       ],
       order: [['createdAt', 'DESC']],
     });
-    // For each review, get the rating and like status
     const reviewsWithDetails = await Promise.all(reviews.map(async (review) => {
       const rating = await Rating.findOne({
         where: { userId, mediaId: review.mediaId, mediaType: review.mediaType },
@@ -480,14 +526,12 @@ app.get('/api/users/:userId/reviews', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// --- List Endpoints ---
-// Crear una nueva lista
+
 app.post('/api/lists', authenticateToken, async (req, res) => {
   try {
     const { name, description, isNumbered, items } = req.body;
     const userId = req.user.id;
     if (!name || name.trim().length === 0) return res.status(400).json({ error: 'El nombre de la lista es requerido.' });
-    // Crear la lista
     const list = await List.create({
       userId,
       name: name.trim(),
@@ -495,7 +539,6 @@ app.post('/api/lists', authenticateToken, async (req, res) => {
       isNumbered: isNumbered || false,
       isPublic: true,
     });
-    // Agregar items a la lista si existen
     if (items && Array.isArray(items) && items.length > 0) {
       const listItems = items.map((item, index) => ({
         listId: list.id,
@@ -511,7 +554,7 @@ app.post('/api/lists', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Obtener todas las listas del usuario autenticado
+
 app.get('/api/users/lists', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -536,7 +579,7 @@ app.get('/api/users/lists', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Obtener todas las listas del usuario
+
 app.get('/api/users/:userId/lists', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -561,7 +604,7 @@ app.get('/api/users/:userId/lists', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Obtener una lista específica (pública)
+
 app.get('/api/lists/:listId', async (req, res) => {
   try {
     const { listId } = req.params;
@@ -586,7 +629,7 @@ app.get('/api/lists/:listId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Actualizar una lista
+
 app.put('/api/lists/:listId', authenticateToken, async (req, res) => {
   try {
     const { listId } = req.params;
@@ -594,16 +637,12 @@ app.put('/api/lists/:listId', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const list = await List.findOne({ where: { id: listId, userId } });
     if (!list) return res.status(404).json({ error: 'Lista no encontrada.' });
-    // Actualizar la lista
     list.name = name?.trim() || list.name;
     list.description = description?.trim() || list.description;
     list.isNumbered = isNumbered !== undefined ? isNumbered : list.isNumbered;
     await list.save();
-    // Si hay items, actualizar los items
     if (items && Array.isArray(items)) {
-      // Eliminar items existentes
       await ListItem.destroy({ where: { listId: list.id } });
-      // Crear nuevos items
       if (items.length > 0) {
         const listItems = items.map((item, index) => ({
           listId: list.id,
@@ -620,7 +659,7 @@ app.put('/api/lists/:listId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Eliminar una lista
+
 app.delete('/api/lists/:listId', authenticateToken, async (req, res) => {
   try {
     const { listId } = req.params;
@@ -634,7 +673,7 @@ app.delete('/api/lists/:listId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Obtener todas las listas públicas (para explorar)
+
 app.get('/api/lists', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -667,16 +706,13 @@ app.get('/api/lists', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// --- Top Movies Endpoints ---
-// Endpoint para agregar/actualizar las Top 10 Películas de un usuario
+
 app.post('/api/users/top-movies', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { topMovies } = req.body; // topMovies es un array de { mediaId, mediaType, order }
+    const { topMovies } = req.body;
     if (!Array.isArray(topMovies) || topMovies.length > 10) return res.status(400).json({ error: 'Se requiere un array de hasta 10 películas.' });
-    // Eliminar las películas existentes del top del usuario
     await TopMovie.destroy({ where: { userId } });
-    // Crear nuevas entradas para las Top 10 Películas
     const newTopMovies = topMovies.map(movie => ({
       userId,
       mediaId: movie.mediaId,
@@ -690,7 +726,7 @@ app.post('/api/users/top-movies', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener las Top 10 Películas de un usuario
+
 app.get('/api/users/:userId/top-movies', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -704,7 +740,7 @@ app.get('/api/users/:userId/top-movies', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para eliminar una película del Top 10 de un usuario
+
 app.delete('/api/users/top-movies/:mediaId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -719,16 +755,13 @@ app.delete('/api/users/top-movies/:mediaId', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-// --- Top Directors Endpoints ---
-// Endpoint para agregar/actualizar los Top 10 Directores de un usuario
+
 app.post('/api/users/top-directors', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { topDirectors } = req.body; // topDirectors es un array de { personId, order }
+    const { topDirectors } = req.body;
     if (!Array.isArray(topDirectors) || topDirectors.length > 10) return res.status(400).json({ error: 'Se requiere un array de hasta 10 directores.' });
-    // Eliminar los directores existentes del top del usuario
     await TopDirector.destroy({ where: { userId } });
-    // Crear nuevas entradas para los Top 10 Directores
     const newTopDirectors = topDirectors.map(director => ({
       userId,
       personId: director.personId,
@@ -741,7 +774,7 @@ app.post('/api/users/top-directors', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener los Top 10 Directores de un usuario
+
 app.get('/api/users/:userId/top-directors', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -755,7 +788,7 @@ app.get('/api/users/:userId/top-directors', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para eliminar un director del Top 10 de un usuario
+
 app.delete('/api/users/top-directors/:personId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -770,16 +803,13 @@ app.delete('/api/users/top-directors/:personId', authenticateToken, async (req, 
     res.status(500).json({ error: error.message });
   }
 });
-// --- Top Actors Endpoints ---
-// Endpoint para agregar/actualizar los Top 10 Actores de un usuario
+
 app.post('/api/users/top-actors', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { actors } = req.body; // actors es un array de { actorId, name, profile_path, character, order }
+    const { actors } = req.body;
     if (!Array.isArray(actors) || actors.length > 10) return res.status(400).json({ error: 'Se requiere un array de hasta 10 actores.' });
-    // Eliminar los actores existentes del top del usuario
     await UserTopActors.destroy({ where: { userId } });
-    // Crear nuevas entradas para los Top 10 Actores
     const newUserTopActors = actors.map(actor => ({
       userId,
       actorId: actor.actorId,
@@ -795,7 +825,7 @@ app.post('/api/users/top-actors', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para obtener los Top 10 Actores de un usuario
+
 app.get('/api/users/:userId/top-actors', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -809,7 +839,7 @@ app.get('/api/users/:userId/top-actors', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para eliminar un actor del Top 10 de un usuario
+
 app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -824,7 +854,7 @@ app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
-// Endpoint para buscar usuarios
+
 app.get('/api/users/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -844,6 +874,7 @@ app.get('/api/users/search', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -856,7 +887,4 @@ app.get('/api/users/:userId', async (req, res) => {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ error: error.message });
   }
-});
-app.listen(port, () => {
-    console.log(`Server is running on port: ${port}`);
 });

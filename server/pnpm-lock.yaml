@@ -32,9 +32,12 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.16.3
+      pg-hstore:
+        specifier: ^2.3.4
+        version: 2.3.4
       sequelize:
         specifier: ^6.37.7
-        version: 6.37.7(pg@8.16.3)
+        version: 6.37.7(pg-hstore@2.3.4)(pg@8.16.3)
     devDependencies:
       nodemon:
         specifier: ^3.1.10
@@ -449,6 +452,10 @@ packages:
   pg-connection-string@2.9.1:
     resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
 
+  pg-hstore@2.3.4:
+    resolution: {integrity: sha512-N3SGs/Rf+xA1M2/n0JBiXFDVMzdekwLZLAO0g7mpDY9ouX+fDI7jS6kTq3JujmYbtNSJ53TJ0q4G98KVZSM4EA==}
+    engines: {node: '>= 0.8.x'}
+
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
@@ -674,6 +681,9 @@ packages:
 
   undefsafe@2.0.5:
     resolution: {integrity: sha512-WxONCrssBM8TSPRqN5EmsjVrsv4A8X12J4ArBiiayv3DyyG3ZlIg6yysuuSYdZsVz3TKcTg2fd//Ujd4CHV1iA==}
+
+  underscore@1.13.7:
+    resolution: {integrity: sha512-GMXzWtsc57XAtguZgaQViUOzs0KTkk8ojr3/xAxXLITqf/3EMwxC0inyETfDFjH/Krbhuep0HNbbjI9i/q3F3g==}
 
   undici-types@7.14.0:
     resolution: {integrity: sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==}
@@ -1134,6 +1144,10 @@ snapshots:
 
   pg-connection-string@2.9.1: {}
 
+  pg-hstore@2.3.4:
+    dependencies:
+      underscore: 1.13.7
+
   pg-int8@1.0.1: {}
 
   pg-pool@3.10.1(pg@8.16.3):
@@ -1252,7 +1266,7 @@ snapshots:
 
   sequelize-pool@7.1.0: {}
 
-  sequelize@6.37.7(pg@8.16.3):
+  sequelize@6.37.7(pg-hstore@2.3.4)(pg@8.16.3):
     dependencies:
       '@types/debug': 4.1.12
       '@types/validator': 13.15.3
@@ -1272,6 +1286,7 @@ snapshots:
       wkx: 0.5.0
     optionalDependencies:
       pg: 8.16.3
+      pg-hstore: 2.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -1360,6 +1375,8 @@ snapshots:
   typedarray@0.0.6: {}
 
   undefsafe@2.0.5: {}
+
+  underscore@1.13.7: {}
 
   undici-types@7.14.0: {}
 
