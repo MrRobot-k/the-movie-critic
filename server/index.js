@@ -11,14 +11,19 @@ const multer = require('multer');
 const path = require('path');
 const { put } = require('@vercel/blob');
 
-// Configurar Multer para almacenar en memoria
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
 const upload = multer({ storage: storage });
 
 app.use(cors());
 app.use(express.json());
-// La ruta estática '/uploads' ya no es necesaria ya que los archivos se sirven desde Vercel Blob
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
   dialect: 'postgres',
@@ -108,17 +113,12 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
       return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
     }
 
-    const filename = req.file.originalname;
-    const blob = await put(filename, req.file.buffer, {
-      access: 'public',
-    });
-
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
 
-    user.profilePicture = blob.url; // Guardar la URL de Vercel Blob
+    user.profilePicture = `/uploads/${req.file.filename}`;
     await user.save();
 
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
