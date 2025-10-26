@@ -391,3 +391,13 @@ header { z-index: 1030 !important; }
     margin-top: 0.5rem !important;
   }
 }
+.movie-card .user-interactions {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  display: flex;
+  gap: 5px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px;
+  border-radius: 5px;
+}

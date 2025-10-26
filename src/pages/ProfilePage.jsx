@@ -147,6 +147,25 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setUserLists(detailedLists);
         setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
+      const likesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
+      const watchedRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`), { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
+
+      let likedItems = [];
+      if (likesRes.ok) {
+        const likesData = await likesRes.json();
+        likedItems = likesData.likedItems || [];
+      }
+
+      let watchedItems = [];
+      if (watchedRes.ok) {
+        const watchedData = await watchedRes.json();
+        watchedItems = watchedData.watchedMovies || [];
+      }
+
       const topMoviesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-movies`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -156,7 +175,19 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           try {
             const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
-            return { ...detail, mediaType: item.mediaType, order: item.order };
+            
+            const userRating = userRatings.find(r => r.mediaId === item.mediaId);
+            const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
+            const isWatched = watchedItems.some(w => w.mediaId === item.mediaId);
+
+            return { 
+              ...detail, 
+              mediaType: item.mediaType, 
+              order: item.order,
+              userScore: userRating ? userRating.score : null,
+              isLiked: isLiked,
+              isWatched: isWatched
+            };
           } catch (error) { return null; }
         }) || [];
         const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
@@ -582,7 +613,13 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <div className="position-relative">
                       <div 
                         className="movie-card position-relative"
-                        onClick={() => getMovieDetails(movie.id, movie.mediaType, null, topMovies, index)}
+                        onClick={() => {
+                          const userRating = userRatings.find(rating => 
+                            rating.mediaId === movie.id && rating.mediaType === movie.mediaType
+                          );
+                          const userScore = userRating ? userRating.score : null;
+                          getMovieDetails(movie.id, movie.mediaType, userScore, topMovies, index);
+                        }}
                         style={{ cursor: 'pointer' }}
                       >
                         <div className="poster-container">
