@@ -49,7 +49,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
       }
     };
     fetchProfileData();
-  }, [userId, location.pathname, navigate, setIsAuthenticated]); // Agregar location.pathname
+  }, [userId, location.pathname, navigate, setIsAuthenticated]); 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
