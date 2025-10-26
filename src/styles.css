@@ -3,52 +3,32 @@ body {
   color: #fff;
   padding-top: 70px;
 }
-
-.text-muted {
-  color: #ced4da !important;
-}
-
+.text-muted { color: #ced4da !important; }
 /* Dropdown del perfil */
-.dropdown-menu {
-  min-width: 160px;
-}
-
+.dropdown-menu { min-width: 160px; }
 .dropdown-item {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
-.dropdown-item:hover {
-  background-color: #3a3f47 !important;
-}
-
+.dropdown-item:hover { background-color: #3a3f47 !important; }
 .profile-dropdown-menu {
   right: 0;
   left: auto;
   transform: translateX(-10px);
 }
-
-.modal-is-open {
-  overflow: hidden;
-}
-
+.modal-is-open { overflow: hidden; }
 .modal-is-open #main-content {
   opacity: 1;
   filter: blur(2px);
   transition: opacity 0.3s, filter 0.3s;
 }
-
 .movie-card {
   position: relative;
   cursor: pointer;
   transition: transform 0.2s;
   max-width: 150px;
 }
-
-.movie-card:hover {
-  transform: scale(1.05);
-}
-
+.movie-card:hover { transform: scale(1.05); }
 /* Backdrop oscuro para el modal */
 .modal-backdrop-dark {
   position: fixed;
@@ -62,26 +42,15 @@ body {
   align-items: center;
   justify-content: center;
 }
-
 /* Bootstrap's default backdrop */
-div.modal-backdrop {
-  background-color: transparent;
-}
-
+div.modal-backdrop { background-color: transparent; }
 .modal-content-custom {
   background-color: #2c3440;
   overflow-y: auto;
   max-height: 90vh;
 }
-
-.modal {
-  background-color: transparent !important;
-}
-
-.modal-dialog {
-  background-color: transparent !important;
-}
-
+.modal { background-color: transparent !important; }
+.modal-dialog { background-color: transparent !important; }
 /* Botón de cerrar (X) en la esquina superior derecha */
 .modal-close-button {
   position: absolute;
@@ -100,25 +69,16 @@ div.modal-backdrop {
   transition: background-color 0.2s, transform 0.2s;
   color: #fff;
 }
-
 .modal-close-button:hover {
   background-color: rgba(0, 0, 0, 0.8);
   transform: scale(1.1);
 }
-
-.modal-close-button:active {
-  transform: scale(0.95);
-}
-
+.modal-close-button:active { transform: scale(0.95); }
 .movie-backdrop {
   height: auto;
   width: 100%;
 }
-
-.modal-custom-width {
-  max-width: 1400px;
-}
-
+.modal-custom-width { max-width: 1400px; }
 .app-footer {
   border-top: 1px solid #2c3440;
   padding: 40px 0 20px 0;
@@ -126,40 +86,23 @@ div.modal-backdrop {
   background-color: #0f1419;
   color: #adb5bd;
 }
-
-.app-footer h5,
-.app-footer h6 {
-  font-weight: 600;
-}
-
+.app-footer h5, .app-footer h6 { font-weight: 600; }
 .app-footer a {
   color: #ced4da;
   text-decoration: none;
   transition: color 0.2s;
 }
-
 .app-footer a:hover {
   color: #fff;
   text-decoration: none;
 }
-
-.app-footer .list-unstyled li {
-  line-height: 1.8;
-}
-
-.app-footer .small {
-  font-size: 0.875rem;
-}
-
+.app-footer .list-unstyled li { line-height: 1.8; }
+.app-footer .small { font-size: 0.875rem; }
 .poster-grid.row {
   --bs-gutter-x: 5px !important;
   --bs-gutter-y: 5px !important;
 }
-
-.create-list-poster-grid .movie-card {
-  max-width: 100px;
-}
-
+.create-list-poster-grid .movie-card { max-width: 100px; }
 .poster-icons-overlay {
   position: absolute;
   top: 5px;
@@ -167,7 +110,6 @@ div.modal-backdrop {
   display: flex;
   gap: 4px;
 }
-
 .user-score-overlay {
   position: absolute;
   bottom: 5px;
@@ -179,66 +121,45 @@ div.modal-backdrop {
   font-size: 0.8em;
   font-weight: bold;
 }
-
 /* Estilos para Reviews */
 .reviews-list {
   max-height: 600px;
   overflow-y: auto;
 }
-
-.reviews-list::-webkit-scrollbar {
-  width: 8px;
-}
-
+.reviews-list::-webkit-scrollbar { width: 8px; }
 .reviews-list::-webkit-scrollbar-track {
   background: #2c3440;
   border-radius: 4px;
 }
-
 .reviews-list::-webkit-scrollbar-thumb {
   background: #454d5d;
   border-radius: 4px;
 }
-
-.reviews-list::-webkit-scrollbar-thumb:hover {
-  background: #5a6270;
-}
-
+.reviews-list::-webkit-scrollbar-thumb:hover { background: #5a6270; }
 .review-item {
   transition: transform 0.2s, box-shadow 0.2s;
   border-color: #454d5d !important;
 }
-
 .review-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
-
 .review-item .badge {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
 }
-
 /* Estilos para listas */
-.movie-card-hover {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
+.movie-card-hover { transition: transform 0.2s, box-shadow 0.2s; }
 .movie-card-hover:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
-
 .list-group-item {
   background-color: #2c3440 !important;
   border-color: #454d5d !important;
   color: #fff !important;
 }
-
-.list-group-item:hover {
-  background-color: #3a3f47 !important;
-}
-
+.list-group-item:hover { background-color: #3a3f47 !important; }
 /* Estilos para navegación de modal */
 .modal-nav-button {
   position: fixed;
@@ -257,25 +178,14 @@ div.modal-backdrop {
   z-index: 1060;
   transition: background-color 0.2s;
 }
-
-.modal-nav-button:hover {
-  background-color: rgba(0, 0, 0, 0.8);
-}
-
+.modal-nav-button:hover { background-color: rgba(0, 0, 0, 0.8); }
 .modal-nav-button:disabled {
   background-color: rgba(0, 0, 0, 0.2);
   cursor: not-allowed;
   opacity: 0.5;
 }
-
-.modal-nav-button.prev {
-  left: 20px;
-}
-
-.modal-nav-button.next {
-  right: 20px;
-}
-
+.modal-nav-button.prev { left: 20px; }
+.modal-nav-button.next { right: 20px; }
 .poster-container {
   position: relative;
   width: 100%;
@@ -283,7 +193,6 @@ div.modal-backdrop {
   overflow: hidden;
   border-radius: 0.25rem;
 }
-
 .poster-container img {
   position: absolute;
   top: 0;
@@ -292,15 +201,12 @@ div.modal-backdrop {
   height: 100%;
   object-fit: cover;
 }
-
 /* ===== NAVBAR - ESTILOS COMPLETOS ===== */
-
 /* Estilos base del navbar */
 .navbar {
   background-color: #14181c !important;
   border-bottom: 1px solid #2c3440;
 }
-
 .navbar.fixed-top {
   z-index: 1030 !important;
   position: fixed !important;
@@ -309,83 +215,48 @@ div.modal-backdrop {
   right: 0 !important;
   width: 100% !important;
 }
-
-header {
-  z-index: 1030 !important;
-}
-
-.navbar-brand {
-  color: #fff !important;
-}
-
-.nav-link {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.nav-link:hover {
-  color: #fff !important;
-}
-
+header { z-index: 1030 !important; }
+.navbar-brand { color: #fff !important; }
+.nav-link { color: rgba(255, 255, 255, 0.8) !important;  }
+.nav-link:hover { color: #fff !important; }
 /* Botón toggler */
 .navbar-toggler {
   border: 2px solid rgba(255, 255, 255, 0.7) !important;
   padding: 0.5rem 0.75rem;
 }
-
 .navbar-toggler:focus {
   box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.5) !important;
   outline: none;
 }
-
 .navbar-toggler-icon {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
 }
-
 /* Formularios */
 .form-control {
   background-color: #2c3440 !important;
   color: #fff !important;
   border: 1px solid #454d5d !important;
 }
-
 .form-control:focus {
   background-color: #3a3f47 !important;
   color: #fff !important;
   border-color: #5a6270 !important;
   box-shadow: none;
 }
-
 /* Dropdown */
 .dropdown-menu-dark {
   background-color: #2c3440;
   border: 1px solid #454d5d;
   z-index: 1031 !important;
 }
-
-.dropdown-menu-dark .dropdown-item {
-  color: #fff;
-}
-
-.dropdown-menu-dark .dropdown-item:hover {
-  background-color: #3a3f47;
-}
-
-.dropdown-menu-dark .dropdown-divider {
-  border-color: #454d5d;
-}
-
+.dropdown-menu-dark .dropdown-item { color: #fff; }
+.dropdown-menu-dark .dropdown-item:hover { background-color: #3a3f47; }
+.dropdown-menu-dark .dropdown-divider { border-color: #454d5d; }
 /* Transición del collapse */
-.navbar-collapse {
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
-}
-
+.navbar-collapse { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
 /* ===== ESTILOS RESPONSIVE ===== */
-
 @media (min-width: 992px) {
-  body {
-    padding-top: 70px;
-  }
-
+  body { padding-top: 70px; }
   /* Fuerza la visualización del navbar-collapse en desktop */
   .navbar-collapse {
     display: flex !important;
@@ -400,16 +271,13 @@ header {
     height: auto !important;
     visibility: visible !important;
   }
-  
   /* Elimina cualquier estilo de collapse en desktop */
   .navbar-collapse.collapse {
     display: flex !important;
     height: auto !important;
     visibility: visible !important;
   }
-  .navbar-collapse.collapse:not(.show) {
-    display: flex !important;
-  }
+  .navbar-collapse.collapse:not(.show) { display: flex !important; }
   #navbarContent {
     display: flex !important;
     width: 100%;
@@ -418,17 +286,12 @@ header {
     margin: 0 !important;
     background-color: transparent !important;
   }
-  
   /* Asegura que los formularios sean visibles */
   #navbarContent form {
     width: auto !important;
     display: block !important;
   }
-
-  #navbarContent form input {
-    width: 200px !important; /* Ancho fijo o auto */
-  }
-
+  #navbarContent form input { width: 200px !important; /* Ancho fijo o auto */ }
   /* Flex container en fila para desktop */
   .d-flex.flex-column.flex-lg-row {
     flex-direction: row !important;
@@ -436,51 +299,30 @@ header {
     width: auto !important;
     display: flex !important;
   }
-
   /* Links visibles */
   #navbarContent .nav-link {
     padding: 0.5rem 1rem;
     border-bottom: none !important;
     display: block !important;
   }
-
   /* Dropdown posicionado correctamente */
-  #navbarContent .dropdown-menu {
-    position: absolute !important;
-  }
-
+  #navbarContent .dropdown-menu { position: absolute !important; }
   /* Ocultar el botón toggler en desktop */
-  .navbar-toggler {
-    display: none !important;
-  }
-  
+  .navbar-toggler { display: none !important; }
   /* Asegurar que el navbar-nav sea flexible */
   .navbar-nav {
     display: flex !important;
     flex-direction: row !important;
   }
-
-  .dropdown-menu.show {
-    display: block !important;
-  }
-  
-  .nav-item.dropdown.show .dropdown-menu {
-    display: block !important;
-  }
+  .dropdown-menu.show { display: block !important; }
+  .nav-item.dropdown.show .dropdown-menu { display: block !important; }
 }
-
 /* MÓVIL Y TABLET - Menor a 992px */
 @media (max-width: 991.98px) {
   /* Ajustar padding del body */
-  body {
-    padding-top: 60px;
-  }
-  
+  body { padding-top: 60px; }
   /* Mostrar el botón toggler en móvil */
-  .navbar-toggler {
-    display: block !important;
-  }
-
+  .navbar-toggler { display: block !important; }
   /* Contenedor del menú colapsado */
   .navbar-collapse {
     position: absolute;
@@ -495,43 +337,34 @@ header {
     overflow: hidden;
     opacity: 0;
   }
-  
   .navbar-collapse.show {
     max-height: calc(100vh - 60px);
     overflow-y: auto;
     opacity: 1;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
-  
   /* Padding interno del menú */
   #navbarContent {
     padding: 1rem !important;
     background-color: #14181c !important;
   }
-  
   /* Formularios ocupan todo el ancho */
   #navbarContent form {
     width: 100% !important;
     margin: 0.5rem 0;
   }
-  
-  #navbarContent form input {
-    width: 100% !important;
-  }
-  
+  #navbarContent form input { width: 100% !important; }
   /* Links del navbar */
   #navbarContent .nav-link {
     padding: 0.75rem 0;
     border-bottom: 1px solid #2c3440;
   }
-  
   /* Contenedor flex en columna */
   .d-flex.flex-column.flex-lg-row {
     flex-direction: column !important;
     align-items: stretch !important;
     width: 100% !important;
   }
-  
   /* Dropdown de perfil en móvil */
   #navbarContent .dropdown-menu {
     position: static !important;
@@ -541,23 +374,15 @@ header {
     border: none;
     box-shadow: none;
   }
-  
   #navbarContent .dropdown-toggle {
     width: 100%;
     justify-content: flex-start !important;
     padding: 0.75rem 0;
     border-bottom: 1px solid #2c3440;
   }
-  
   /* Ajustar el navbar */
-  .navbar-nav {
-    width: 100%;
-  }
-  
-  .navbar-nav .nav-item {
-    width: 100%;
-  }
-
+  .navbar-nav { width: 100%; }
+  .navbar-nav .nav-item { width: 100%; }
   .dropdown-menu.show {
     display: block !important;
     position: static !important;
