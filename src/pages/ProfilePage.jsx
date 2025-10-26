@@ -30,10 +30,18 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isProfilePictureModalOpen, setIsProfilePictureModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stats, setStats] = useState({ watched: 0, likes: 0, reviews: 0, watchlist: 0 });
   const loggedInUserId = localStorage.getItem('userId');
   const isOwnProfile = !paramUserId || paramUserId === loggedInUserId;
   const userIdToFetch = isOwnProfile ? loggedInUserId : paramUserId;
+
+  useEffect(() => {
+    if (location.hash === '#delete-account') {
+      setIsDeleteModalOpen(true);
+    }
+  }, [location]);
+
   useEffect(() => {
     if (!isAuthenticated && isOwnProfile) {
       navigate('/login');
@@ -396,6 +404,39 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setError('Error de red al eliminar el actor.');
     }
   };
+
+  const handleDeleteAccount = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      handleAuthError();
+      return;
+    }
+
+    try {
+      const response = await fetch(getApiUrl(`/api/users/${loggedInUserId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('Tu cuenta ha sido eliminada exitosamente.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username');
+        navigate('/register');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al eliminar la cuenta.');
+      }
+    } catch (err) {
+      setError('Error de red al eliminar la cuenta.');
+    } finally {
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
   return (
@@ -890,6 +931,26 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     Cancelar
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content bg-dark text-white">
+              <div className="modal-header">
+                <h5 className="modal-title">Eliminar Cuenta</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setIsDeleteModalOpen(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p>¿Estás seguro de que quieres eliminar tu cuenta? Esta acción es irreversible.</p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</button>
+                <button type="button" className="btn btn-danger" onClick={handleDeleteAccount}>Eliminar Cuenta</button>
               </div>
             </div>
           </div>
