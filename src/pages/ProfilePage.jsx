@@ -58,40 +58,53 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setSlogan(userData.slogan || '');
         setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/ratings-with-scores`), { headers: { 'Authorization': `Bearer ${token}` } });
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/ratings-with-scores`), { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
-        setUserRatings(data.watchedMovies || []);
-        setStats(prev => ({ ...prev, watched: data.ratings.length }));
+        console.log('Ratings data:', data);
+        setUserRatings(data.ratings || []);
+        setStats(prev => ({ ...prev, watched: data.ratings?.length || 0 }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { headers: { 'Authorization': `Bearer ${token}` } });
+      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
       if (likesStatsRes.ok) {
         const data = await likesStatsRes.json();
-        setStats(prev => ({ ...prev, likes: data.likedItems.length }));
+        setStats(prev => ({ ...prev, likes: data.likedItems?.length || 0 }));
       }
-      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watchlist`), { headers: { 'Authorization': `Bearer ${token}` } });
+      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watchlist`), { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
       if (watchlistStatsRes.ok) {
         const data = await watchlistStatsRes.json();
-        setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies.length }));
+        setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies?.length || 0 }));
       }
       const listsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/lists`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (listsRes.ok) {
         const data = await listsRes.json();
-        setUserLists(data.lists);
+        setUserLists(data.lists || []);
+        setStats(prev => ({ ...prev, reviews: data.lists?.length || 0 }));
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
       const topMoviesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-movies`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (topMoviesRes.ok) {
         const data = await topMoviesRes.json();
-        const detailedTopMoviesPromises = data.topMovies.map(async (item) => {
-          const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-          const detail = await detailRes.json();
-          return { ...detail, mediaType: item.mediaType, order: item.order };
-        });
-        const movies = await Promise.all(detailedTopMoviesPromises);
+        const detailedTopMoviesPromises = data.topMovies?.map(async (item) => {
+          try {
+            const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+            const detail = await detailRes.json();
+            return { ...detail, mediaType: item.mediaType, order: item.order };
+          } catch (error) {
+            console.error('Error fetching movie details:', error);
+            return null;
+          }
+        }) || [];
+        const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
         movies.sort((a, b) => a.order - b.order);
         setTopMovies(movies);
       } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
@@ -100,12 +113,17 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (topDirectorsRes.ok) {
         const data = await topDirectorsRes.json();
-        const detailedTopDirectorsPromises = data.topDirectors.map(async (item) => {
-          const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
-          const detail = await detailRes.json();
-          return { ...detail, order: item.order };
-        });
-        const directors = await Promise.all(detailedTopDirectorsPromises);
+        const detailedTopDirectorsPromises = data.topDirectors?.map(async (item) => {
+          try {
+            const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
+            const detail = await detailRes.json();
+            return { ...detail, order: item.order };
+          } catch (error) {
+            console.error('Error fetching director details:', error);
+            return null;
+          }
+        }) || [];
+        const directors = (await Promise.all(detailedTopDirectorsPromises)).filter(director => director !== null);
         directors.sort((a, b) => a.order - b.order);
         setTopDirectors(directors);
       } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
@@ -126,11 +144,18 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (reviewsRes.ok) {
         const data = await reviewsRes.json();
-        const reviewsWithMovieDetails = await Promise.all(data.reviews.map(async (review) => {
-          const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
-          const detail = await detailRes.json();
-          return { ...review, movieDetails: detail };
-        }));
+        const reviewsWithMovieDetails = await Promise.all(
+          (data.reviews || []).map(async (review) => {
+            try {
+              const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
+              const detail = await detailRes.json();
+              return { ...review, movieDetails: detail };
+            } catch (error) {
+              console.error('Error fetching review movie details:', error);
+              return review;
+            }
+          })
+        );
         setReviews(reviewsWithMovieDetails);
       } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
     } catch (err) {
@@ -326,7 +351,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   };
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
-  const ratingStats = {};
   return (
     <div className="container my-5">
       <div className="row">
@@ -410,7 +434,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             {/* Estadísticas principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
-
                 <div className="col-3">
                   <div className="d-flex flex-column align-items-center">
                     <Film size={20} className="text-success mb-1" />
@@ -663,91 +686,85 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   <div className="row">
                     <div className="col-md-2">
                       <div className="poster-container">
-                        {review.movieDetails.poster_path ? (
-                          <img
-                            src={`${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}`}
-                            alt={review.movieDetails.title || review.movieDetails.name}
-                          />
-                        ) : (
-                          <div className="d-flex align-items-center justify-content-center h-100 bg-dark rounded">
-                            <Film size={48} className="text-muted" />
-                          </div>
-                        )}
+                        <img
+                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}` : '/placeholder-poster.svg'}
+                          alt={review.movieDetails?.title || review.movieDetails?.name}
+                          className="img-fluid rounded"
+                        />
                       </div>
                     </div>
                     <div className="col-md-10">
-                      <h4 className="text-light">{review.movieDetails.title || review.movieDetails.name}</h4>
-                      <p className="text-muted">{review.reviewText}</p>
-                      <div className="d-flex align-items-center flex-wrap">
-                        {review.rating && (
-                          <span className="d-flex align-items-center me-3 mb-2">
-                            <Star size={20} className="text-warning me-1" />
-                            <span className="text-light">{review.rating}/5</span>
-                          </span>
-                        )}
-                        <span className="d-flex align-items-center me-3 mb-2">
-                           <BarChart3 size={20} className="text-info me-1" />
-                          <span className="text-light">{review.movieDetails.vote_average.toFixed(1)}</span>
-                        </span>
-                        {review.hasLiked && (
-                          <span className="d-flex align-items-center text-danger mb-2">
-                            <Heart size={20} className="me-1" />
-                            <span>Liked</span>
-                          </span>
-                        )}
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h5 className="text-light mb-0">
+                          {review.movieDetails?.title || review.movieDetails?.name}
+                        </h5>
+                        <div className="d-flex align-items-center">
+                          <Star size={16} className="text-warning me-1" />
+                          <span className="text-light fw-bold">{review.rating}</span>
+                        </div>
                       </div>
+                      <p className="text-light">{review.comment}</p>
+                      <small className="text-muted">
+                        {new Date(review.createdAt).toLocaleDateString('es-MX')}
+                      </small>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-muted">Aún no has escrito ninguna review.</p>
+              <div className="text-center py-4">
+                <p className="text-muted">Aún no has escrito ninguna review.</p>
+              </div>
             )}
           </div>
-          {/* Sección de Películas Vistas */}
-          <h2 className="fw-bold mb-4 text-light">Películas Vistas</h2>
-          <div className="p-4 rounded mb-5" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
-            <PaginatedMovieGrid
-              moviesData={userRatings}
-              title=""
-              isAuthenticated={isAuthenticated}
-              getMovieDetails={getMovieDetails}
-              selectedMovie={selectedMovie}
-              onCloseDetails={onCloseDetails}
-              onRateMovie={onRateMovie}
-              onToggleLike={onToggleLike}
-              onToggleWatchlist={onToggleWatchlist}
-            />
-          </div>
-          {/* Sección de Mis Listas */}
-          <h2 className="fw-bold mb-4 text-light">Listas</h2>
+          {/* Sección de Listas */}
+          <h2 className="fw-bold mb-4 text-light">Mis Listas</h2>
           <div className="mb-5">
             {userLists.length > 0 ? (
-              <div className="row">
+              <div className="row g-3">
                 {userLists.map(list => (
-                  <div key={list.id} className="col-md-6 col-lg-4 mb-4">
-                    <div className="card h-100" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
-                      <div className="card-body">
-                        <h5 className="card-title text-light">{list.name}</h5>
-                        <p className="card-text text-muted small">{list.description || 'Sin descripción.'}</p>
-                        <p className="card-text text-muted small">{list.items.length} películas</p>
-                        <button className="btn btn-sm btn-outline-light" onClick={() => navigate(`/lista/${list.id}`)}>Ver Lista</button>
+                  <div key={list.id} className="col-md-6 col-lg-4">
+                    <div 
+                      className="p-3 rounded h-100"
+                      style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d', cursor: 'pointer' }}
+                      onClick={() => navigate(`/list/${list.id}`)}
+                    >
+                      <h6 className="text-light mb-2">{list.name}</h6>
+                      <p className="text-muted small mb-2">{list.description}</p>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <small className="text-muted">
+                          {list.movieCount || 0} películas
+                        </small>
+                        <small className="text-muted">
+                          {new Date(list.createdAt).toLocaleDateString('es-MX')}
+                        </small>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted">Aún no has creado ninguna lista.</p>
+              <div className="text-center py-4">
+                <p className="text-muted">Aún no has creado ninguna lista.</p>
+                {isOwnProfile && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/list-creator')}
+                  >
+                    <Plus size={16} className="me-1" />
+                    Crear Mi Primera Lista
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
       </div>
+      {/* Modal de detalles de película */}
       {selectedMovie && (
         <MovieDetailsModal
           movie={selectedMovie}
           onClose={onCloseDetails}
-          isAuthenticated={isAuthenticated}
           onRateMovie={onRateMovie}
           onToggleLike={onToggleLike}
           onToggleWatchlist={onToggleWatchlist}
@@ -756,20 +773,42 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           onNavigate={onNavigate}
         />
       )}
+      {/* Modal para cambiar foto de perfil */}
       {isProfilePictureModalOpen && (
-        <div className="modal-backdrop-dark" onClick={() => setIsProfilePictureModalOpen(false)}>
-          <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content" style={{ position: 'relative', backgroundColor: 'transparent', border: 'none' }}>
-                <button onClick={() => setIsProfilePictureModalOpen(false)} className="modal-close-button" aria-label="Cerrar">
-                  <X size={24} />
-                </button>
-                <div className="modal-body text-center">
-                  <img 
-                    src={profilePicturePreview || profilePicture || '/placeholder-profile.svg'}
-                    alt="Profile" 
-                    className="img-fluid"
-                  />
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+              <div className="modal-header">
+                <h5 className="modal-title text-light">Cambiar Foto de Perfil</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setIsProfilePictureModalOpen(false)}></button>
+              </div>
+              <div className="modal-body text-center">
+                <img 
+                  src={profilePicturePreview || profilePicture || '/placeholder-profile.svg'}
+                  alt="Profile Preview" 
+                  className="rounded-circle mb-3"
+                  style={{ width: '200px', height: '200px', objectFit: 'cover' }}
+                />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="form-control mb-3" 
+                  onChange={handleFileChange}
+                />
+                <div className="d-flex justify-content-center gap-2">
+                  <button 
+                    className="btn btn-primary"
+                    onClick={handleSaveProfilePicture}
+                    disabled={!selectedFile}
+                  >
+                    Guardar
+                  </button>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setIsProfilePictureModalOpen(false)}
+                  >
+                    Cancelar
+                  </button>
                 </div>
               </div>
             </div>
