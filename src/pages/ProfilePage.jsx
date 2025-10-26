@@ -677,17 +677,16 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-          {/* Sección de Reviews */}
           <h2 className="fw-bold mb-4 text-light">Reviews</h2>
           <div className="mb-5">
             {reviews.length > 0 ? (
-              reviews.map(review => (
-                <div key={review.id} className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+              reviews.map((review) => (
+                <div key={review.id} className="p-4 rounded mb-4" style={{ backgroundColor: "#1e2328", border: "1px solid #454d5d" }}>
                   <div className="row">
                     <div className="col-md-2">
                       <div className="poster-container">
                         <img
-                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}` : '/placeholder-poster.svg'}
+                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}w342${review.movieDetails.poster_path}` : "placeholder-poster.svg"}
                           alt={review.movieDetails?.title || review.movieDetails?.name}
                           className="img-fluid rounded"
                         />
@@ -695,18 +694,14 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     </div>
                     <div className="col-md-10">
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="text-light mb-0">
-                          {review.movieDetails?.title || review.movieDetails?.name}
-                        </h5>
+                        <h5 className="text-light mb-0">{review.movieDetails?.title || review.movieDetails?.name}</h5>
                         <div className="d-flex align-items-center">
                           <Star size={16} className="text-warning me-1" />
                           <span className="text-light fw-bold">{review.rating}</span>
                         </div>
                       </div>
                       <p className="text-light">{review.comment}</p>
-                      <small className="text-muted">
-                        {new Date(review.createdAt).toLocaleDateString('es-MX')}
-                      </small>
+                      <small className="text-muted">{new Date(review.createdAt).toLocaleDateString("es-MX")}</small>
                     </div>
                   </div>
                 </div>
