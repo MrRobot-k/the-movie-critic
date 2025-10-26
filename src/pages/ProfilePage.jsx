@@ -724,23 +724,48 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               <div className="row g-3">
                 {userLists.map(list => (
                   <div key={list.id} className="col-md-6 col-lg-4">
-                    <div 
-                      className="p-3 rounded h-100"
-                      style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d', cursor: 'pointer' }}
-                      onClick={() => navigate(`/list/${list.id}`)}
-                    >
-                      <h6 className="text-light mb-2">{list.name}</h6>
-                      <p className="text-muted small mb-2">{list.description}</p>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <small className="text-muted">
-                          {list.movieCount || 0} películas
-                        </small>
-                        <small className="text-muted">
-                          {new Date(list.createdAt).toLocaleDateString('es-MX')}
-                        </small>
-                      </div>
-                    </div>
-                  </div>
+  <div 
+    className="p-3 rounded h-100"
+    style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d', cursor: 'pointer' }}
+    onClick={() => navigate(`/list/${list.id}`)}
+  >
+    <h6 className="text-light mb-2">{list.name}</h6>
+    <p className="text-muted small mb-2">{list.description}</p>
+    
+    {/* Mostrar cantidad de películas */}
+    <div className="d-flex align-items-center mb-2">
+      <Film size={16} className="text-muted me-1" />
+      <small className="text-muted">{list.movieCount || 0} películas</small>
+    </div>
+
+    {/* Mostrar previsualizaciones de posters si la lista tiene películas */}
+    {list.movies && list.movies.length > 0 && (
+      <div className="d-flex gap-1 mb-2 overflow-hidden" style={{ height: '60px' }}>
+        {list.movies.slice(0, 3).map((movie, index) => (
+          <img
+            key={movie.id}
+            src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : "/placeholder-poster.svg"}
+            alt={movie.title}
+            className="rounded"
+            style={{ height: '100%', width: 'auto' }}
+          />
+        ))}
+        {list.movies.length > 3 && (
+          <div className="d-flex align-items-center justify-content-center rounded bg-dark" 
+               style={{ height: '100%', width: '40px' }}>
+            <small className="text-muted">+{list.movies.length - 3}</small>
+          </div>
+        )}
+      </div>
+    )}
+
+    <div className="d-flex justify-content-between align-items-center">
+      <small className="text-muted">
+        {new Date(list.createdAt).toLocaleDateString('es-MX')}
+      </small>
+    </div>
+  </div>
+</div>
                 ))}
               </div>
             ) : (
