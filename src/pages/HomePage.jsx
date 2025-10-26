@@ -5,7 +5,7 @@ const HomePage = (props) => {
   return (
     <PaginatedMovieGrid
       {...props}
-      title="Películas y Series"
+      title=""
       endpoint="/discover/movie"
     />
   );
