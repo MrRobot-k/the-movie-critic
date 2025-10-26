@@ -1,11 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/icon.png';
+
 const GuestHeader = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
         {/* Logo/Brand */}
-        <Link className="navbar-brand fs-4 fw-bold me-4" to="/">The Movie Critic</Link>
+        <Link className="navbar-brand" to="/">
+          <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
+        </Link>
         {/* Link de Listas - siempre visible en desktop */}
         <Link className="nav-link text-white d-none d-lg-block me-3" to="/listas">Listas</Link>
         {/* Spacer para empujar los botones a la derecha */}

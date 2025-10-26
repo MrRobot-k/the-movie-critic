@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
+import logo from '../assets/icon.png';
 
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
@@ -46,7 +47,9 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
-        <Link className="navbar-brand fs-4 fw-bold" to="/">The Movie Critic</Link>
+        <Link className="navbar-brand" to="/">
+          <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
+        </Link>
         
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded={!isNavCollapsed} aria-label="Toggle navigation" onClick={() => setIsNavCollapsed(!isNavCollapsed)}>
           <span className="navbar-toggler-icon"></span>
