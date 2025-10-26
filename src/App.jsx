@@ -34,7 +34,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Verificar autenticación al cargar y cuando cambia la ubicación
+  // Verificar autenticación al cargar y cuando cambie la ubicación
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('token');
@@ -52,7 +52,18 @@ export default function App() {
     };
 
     checkAuth();
-  }, [location.pathname]); // Ejecutar cuando cambie la ruta
+
+    // Listener para cambios en localStorage (útil para múltiples pestañas)
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.pathname]);
 
   const handleSearch = (e) => {
     e.preventDefault();

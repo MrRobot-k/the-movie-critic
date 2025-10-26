@@ -2,54 +2,68 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
+
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const [profilePicture, setProfilePicture] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [username, setUsername] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const userId = localStorage.getItem('userId');
+
   useEffect(() => {
     const fetchProfileData = async () => {
+      setIsLoading(true);
       if (!userId) {
-        console.log('No userId found, redirecting to login');
+        setIsLoading(false);
         navigate('/login');
         return;
       }
+
       const token = localStorage.getItem('token');
+      console.log("Token:", token);
       if (!token) {
-        console.log('No token found, redirecting to login');
+        setIsLoading(false);
         navigate('/login');
         return;
       }
+
+      debugger;
       try {
         const response = await fetch(getApiUrl(`/api/users/${userId}`), { 
           headers: { 
             'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache' // Forzar no usar caché
+            'Cache-control': 'no-cache'
           } 
         });
+
         if (response.ok) {
           const userData = await response.json();
           setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
           setUsername(userData.username);
-          // Actualizar localStorage con datos frescos
           localStorage.setItem('username', userData.username);
         } else if (response.status === 401 || response.status === 403) {
-          console.log('Auth error, clearing data and redirecting');
+          console.error("Authorization error:", response);
           localStorage.removeItem('token');
           localStorage.removeItem('userId');
           localStorage.removeItem('username');
           setIsAuthenticated(false);
           navigate('/login');
+        } else {
+          console.error("Error fetching profile data:", response);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
+
     fetchProfileData();
-  }, [userId, location.pathname, navigate, setIsAuthenticated]); 
+  }, [userId, location.pathname, navigate, setIsAuthenticated]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
@@ -57,18 +71,37 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     setIsAuthenticated(false);
     navigate('/login');
   };
+
   const handleUserSearch = (e) => {
     e.preventDefault();
-    if (userSearchQuery.trim()) navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+    if (userSearchQuery.trim()) {
+      navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+    }
   };
-  // Validación adicional: si no hay username, no mostrar el header completo
-  if (!username && !userId) return null;
+
+  // Mostrar un loader mientras se cargan los datos
+  if (isLoading) {
+    return (
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
+        <div className="container-fluid">
+          <Link className="navbar-brand" to="/">
+            <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
+          </Link>
+          <div className="ms-auto">
+            <span className="text-white">Cargando...</span>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
         <Link className="navbar-brand" to="/">
           <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
         </Link>
+        
         <button 
           className="navbar-toggler" 
           type="button" 
@@ -81,12 +114,14 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         >
           <span className="navbar-toggler-icon"></span>
         </button>
+
         <div className={`${isNavCollapsed ? 'collapse' : ''} navbar-collapse`} id="navbarContent">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item">
               <Link className="nav-link" to="/listas">Listas</Link>
             </li>
           </ul>
+
           <div className="d-flex flex-column flex-lg-row align-items-center gap-2">
             <form onSubmit={handleSearch} className="d-flex my-2 my-lg-0">
               <input
@@ -97,6 +132,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                 className="form-control bg-dark text-white"
               />
             </form>
+
             <form onSubmit={handleUserSearch} className="d-flex my-2 my-lg-0">
               <input
                 type="search"
@@ -106,6 +142,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                 className="form-control bg-dark text-white"
               />
             </form>
+
             <ul className="navbar-nav">
               <li className="nav-item dropdown">
                 <a 
@@ -145,4 +182,5 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     </nav>
   );
 };
+
 export default AuthenticatedHeader;
