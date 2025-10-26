@@ -1,3 +1,4 @@
+// test comment
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import "./styles.css";
@@ -21,9 +22,7 @@ import TopDirectorsEditor from './pages/TopDirectorsEditor';
 import TopActorsEditor from './pages/TopActorsEditor';
 import UserSearchPage from './pages/UserSearchPage';
 import { getApiUrl } from "./config/api";
-
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [query, setQuery] = useState("");
@@ -33,38 +32,28 @@ export default function App() {
   const [currentMovieIndex, setCurrentMovieIndex] = useState(-1);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Verificar autenticación al cargar y cuando cambie la ubicación
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       const isAuth = !!(token && userId);
-      
       console.log('Auth check:', { 
         isAuth, 
         token: !!token, 
         userId,
         path: location.pathname 
       });
-      
       setIsAuthenticated(isAuth);
     };
-
     checkAuth();
-
-    // Listener para cambios en localStorage (útil para múltiples pestañas)
     const handleStorageChange = () => {
       checkAuth();
     };
-
     window.addEventListener('storage', handleStorageChange);
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [location.pathname]);
-
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
@@ -72,12 +61,10 @@ export default function App() {
       if (location.pathname !== '/') navigate('/');
     }
   };
-
   const clearSearch = () => {
     setQuery("");
     setSearchQuery("");
   };
-
   const getMovieDetails = async (id, mediaType, userScore, list = null, index = -1) => {
     try {
       const effectiveMediaType = mediaType;
@@ -85,18 +72,15 @@ export default function App() {
         fetch(`${import.meta.env.VITE_BASE_URL}/${effectiveMediaType}/${id}?api_key=${API_KEY}&language=es-MX`),
         fetch(`${import.meta.env.VITE_BASE_URL}/${effectiveMediaType}/${id}/credits?api_key=${API_KEY}&language=es-MX`),
       ]);
-
       const details = await detailsRes.json();
       const credits = await creditsRes.json();
-
       setSelectedMovie({
         ...details,
         director: credits.crew.find((person) => person.job === "Director"),
         cast: credits.cast,
-        media_type: effectiveMediaType,
+        mediaType: effectiveMediaType,
         userScore,
       });
-
       if (list) {
         setCurrentMovieList(list);
         setCurrentMovieIndex(index);
@@ -108,31 +92,26 @@ export default function App() {
       console.error("Error fetching details:", error);
     }
   };
-
   const onCloseDetails = () => {
     setSelectedMovie(null);
     setCurrentMovieList(null);
     setCurrentMovieIndex(-1);
   };
-
   const handleNavigateInModal = (direction) => {
     if (!currentMovieList || currentMovieIndex === -1) return;
     const newIndex = direction === 'next' ? currentMovieIndex + 1 : currentMovieIndex - 1;
     if (newIndex >= 0 && newIndex < currentMovieList.length) {
       const nextMovie = currentMovieList[newIndex];
-      getMovieDetails(nextMovie.id, nextMovie.media_type, nextMovie.userScore, currentMovieList, newIndex);
+      getMovieDetails(nextMovie.id, nextMovie.mediaType, nextMovie.userScore, currentMovieList, newIndex);
     }
   };
-
   useEffect(() => {
     if (selectedMovie) document.body.classList.add("modal-open");
     else document.body.classList.remove("modal-open");
   }, [selectedMovie]);
-
   const onRateMovie = async (mediaId, mediaType, score) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
       await fetch(getApiUrl(`/api/media/${mediaId}/rate`), {
         method: "POST",
@@ -143,11 +122,9 @@ export default function App() {
       console.error("Error al calificar:", error.message);
     }
   };
-
   const onToggleLike = async (id, mediaType) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
       await fetch(getApiUrl(`/api/media/${id}/like`), {
         method: "POST",
@@ -158,11 +135,9 @@ export default function App() {
       console.error("Error al alternar Me gusta:", error.message);
     }
   };
-
   const onToggleWatchlist = async (mediaId, mediaType) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
       await fetch(getApiUrl(`/api/media/${mediaId}/watchlist`), {
         method: "POST",
@@ -173,7 +148,6 @@ export default function App() {
       console.error("Error al alternar Watchlist:", error.message);
     }
   };
-
   const modalProps = {
     getMovieDetails,
     selectedMovie,
@@ -186,7 +160,6 @@ export default function App() {
     currentIndex: currentMovieIndex,
     onNavigate: handleNavigateInModal,
   };
-
   return (
     <div>
       <header>
@@ -201,7 +174,6 @@ export default function App() {
           <GuestHeader />
         )}
       </header>
-
       <Routes>
         <Route path="/" element={<HomePage {...modalProps} query={searchQuery} clearSearch={clearSearch} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
@@ -222,7 +194,6 @@ export default function App() {
         <Route path="/top-directors-editor" element={<TopDirectorsEditor />} />
         <Route path="/top-actors-editor" element={<TopActorsEditor />} />
       </Routes>
-
       <Footer />
     </div>
   );
