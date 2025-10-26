@@ -120,4 +120,5 @@ const PersonDetailsPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isA
     </div>
   );
 };
+
 export default PersonDetailsPage;
