@@ -5,7 +5,7 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const ITEMS_PER_PAGE = 24;
 
-const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [] }) => {
+const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isNumbered = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState('custom'); // Default to custom order from list
   const [fullMovieListDetails, setFullMovieListDetails] = useState([]); // Stores all fetched movie details
@@ -27,7 +27,7 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [] }) =
           if (!detailRes.ok) throw new Error(`Failed to fetch details for ${item.mediaId}`);
           const detail = await detailRes.json();
           const userScore = ratingsMap.get(`${item.mediaId}-${item.mediaType}`) || 0;
-          return { ...detail, media_type: item.mediaType, id: item.mediaId, userScore };
+          return { ...detail, media_type: item.mediaType, id: item.mediaId, userScore, listOrder: item.order };
         });
         const fetchedMovies = await Promise.all(movieDetailsPromises);
         setFullMovieListDetails(fetchedMovies);
@@ -113,8 +113,12 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [] }) =
                     src={movie.poster_path ? `${IMAGE_BASE_URL}/w342${movie.poster_path}` : '/placeholder-poster.svg'}
                     alt={movie.title || movie.name}
                   />
+                  {isNumbered && (
+                    <div className="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 rounded-end" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                      #{movie.listOrder}
+                    </div>
+                  )}
                 </div>
-                                  {/* Assuming list.isNumbered is not available here, so not rendering the number overlay */}
               </div>
             </div>
           ))}

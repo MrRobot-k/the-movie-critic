@@ -130,7 +130,7 @@ const ViewListPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthen
         </div>
       )}
       {list.items && list.items.length > 0 ? (
-        <PaginatedListMovies listItems={list.items} getMovieDetails={getMovieDetails} userRatings={userRatings} />
+        <PaginatedListMovies listItems={list.items} getMovieDetails={getMovieDetails} userRatings={userRatings} isNumbered={list.isNumbered} />
       ) : (
         <p>Esta lista no tiene películas.</p>
       )}

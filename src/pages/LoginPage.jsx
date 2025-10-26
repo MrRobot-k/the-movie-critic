@@ -18,6 +18,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('username', data.user.username);
         setIsAuthenticated(true);
         navigate('/');
       } else alert(data.error || 'Error al iniciar sesión');

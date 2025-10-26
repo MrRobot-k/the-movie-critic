@@ -7,9 +7,9 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [username, setUsername] = useState(localStorage.getItem('username'));
   const navigate = useNavigate();
   const userId = localStorage.getItem('userId');
-  const username = localStorage.getItem('username');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -38,6 +38,17 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUsername = localStorage.getItem('username');
+      setUsername(updatedUsername);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 

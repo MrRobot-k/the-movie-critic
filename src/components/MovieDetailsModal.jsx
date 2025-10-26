@@ -246,18 +246,13 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     }
   };
   const getProfileImageUrl = (profilePicture) => {
-    console.log('🖼️ ProfilePicture recibida:', profilePicture);
     if (!profilePicture) {
-      console.log('❌ No hay profilePicture, usando placeholder');
       return '/placeholder-profile.svg';
     }
     if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
-      console.log('✅ URL completa:', profilePicture);
       return profilePicture;
     }
-    const fullUrl = getApiUrl(`${profilePicture.startsWith('/') ? '' : '/'}${profilePicture}`);
-    console.log('🔗 URL construida:', fullUrl);
-    return fullUrl;
+    return getApiUrl(profilePicture);
   };
   const backdropUrl = movie.backdrop_path
     ? `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`
@@ -455,7 +450,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
                             <div className="d-flex justify-content-between align-items-start mb-2">
                               <div className="d-flex align-items-center">
                                 <img
-                                  src={getApiUrl(review.user.profilePicture)}
+                                  src={getProfileImageUrl(review.user.profilePicture)}
                                   alt={`${review.user.username} profile`}
                                   className="rounded-circle me-2" 
                                   style={{ width: '30px', height: '30px', objectFit: 'cover' }}

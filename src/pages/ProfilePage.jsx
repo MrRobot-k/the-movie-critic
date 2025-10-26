@@ -63,7 +63,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
-        console.log('Ratings data:', data);
         setUserRatings(data.ratings || []);
         setStats(prev => ({ ...prev, watched: data.ratings?.length || 0 }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
@@ -86,8 +85,59 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (listsRes.ok) {
         const data = await listsRes.json();
-        setUserLists(data.lists || []);
-        setStats(prev => ({ ...prev, reviews: data.lists?.length || 0 }));
+        const lists = data.lists || [];
+        const detailedLists = await Promise.all(
+          lists.map(async (list) => {
+            try {
+              const listDetailRes = await fetch(getApiUrl(`/api/lists/${list.id}`), {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (listDetailRes.ok) {
+                const ld = await listDetailRes.json();
+                const listData = ld.list || ld;
+                const moviesFromDetail = listData.items || [];
+                
+                // Fetch full movie details for each item
+                const moviesWithDetails = await Promise.all(
+                  moviesFromDetail.map(async (item) => {
+                    try {
+                      const movieRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+                      const movieDetail = await movieRes.json();
+                      return {
+                        ...movieDetail,
+                        id: item.mediaId,
+                        mediaType: item.mediaType,
+                        order: item.order,
+                        poster_path: movieDetail.poster_path
+                      };
+                    } catch (err) {
+                      return {
+                        id: item.mediaId,
+                        mediaType: item.mediaType,
+                        order: item.order,
+                        poster_path: null
+                      };
+                    }
+                  })
+                );
+                
+                return {
+                  ...list,
+                  ...listData,
+                  movies: moviesWithDetails,
+                  movieCount: moviesWithDetails.length,
+                };
+              }
+            } catch (err) { }
+            return {
+              ...list,
+              movies: list.items || [],
+              movieCount: list.items?.length || 0,
+            };
+          })
+        );
+        setUserLists(detailedLists);
+        setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
       const topMoviesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/top-movies`), {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -99,10 +149,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
             return { ...detail, mediaType: item.mediaType, order: item.order };
-          } catch (error) {
-            console.error('Error fetching movie details:', error);
-            return null;
-          }
+          } catch (error) { return null; }
         }) || [];
         const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
         movies.sort((a, b) => a.order - b.order);
@@ -118,10 +165,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
             return { ...detail, order: item.order };
-          } catch (error) {
-            console.error('Error fetching director details:', error);
-            return null;
-          }
+          } catch (error) { return null; }
         }) || [];
         const directors = (await Promise.all(detailedTopDirectorsPromises)).filter(director => director !== null);
         directors.sort((a, b) => a.order - b.order);
@@ -149,17 +193,26 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             try {
               const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
               const detail = await detailRes.json();
-              return { ...review, movieDetails: detail };
+              return {
+                ...review,
+                movieDetails: detail,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
             } catch (error) {
-              console.error('Error fetching review movie details:', error);
-              return review;
+              return {
+                ...review,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
             }
           })
         );
         setReviews(reviewsWithMovieDetails);
       } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
     } catch (err) {
-      console.error('Error fetching profile data:', err);
       setError('Error al cargar los datos del perfil.');
     } finally {
       setLoading(false);
@@ -212,7 +265,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.message || 'Error al actualizar la foto de perfil.');
       }
     } catch (err) {
-      console.error('Error uploading profile picture:', err);
       setError('Error de red al actualizar la foto de perfil.');
     } finally {
       setLoading(false);
@@ -242,7 +294,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.message || 'Error al eliminar la foto de perfil.');
       }
     } catch (err) {
-      console.error('Error deleting profile picture:', err);
       setError('Error de red al eliminar la foto de perfil.');
     } finally {
       setLoading(false);
@@ -277,7 +328,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.message || 'Error al actualizar el perfil.');
       }
     } catch (err) {
-      console.error('Error updating profile:', err);
       setError('Error de red al actualizar el perfil.');
     } finally {
       setLoading(false);
@@ -301,7 +351,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.error || 'Error al eliminar la película.');
       }
     } catch (err) {
-      console.error('Error removing top movie:', err);
       setError('Error de red al eliminar la película.');
     }
   };
@@ -323,7 +372,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.error || 'Error al eliminar el director.');
       }
     } catch (err) {
-      console.error('Error removing top director:', err);
       setError('Error de red al eliminar el director.');
     }
   };
@@ -345,7 +393,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setError(errorData.error || 'Error al eliminar el actor.');
       }
     } catch (err) {
-      console.error('Error removing top actor:', err);
       setError('Error de red al eliminar el actor.');
     }
   };
@@ -354,10 +401,10 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   return (
     <div className="container my-5">
       <div className="row">
-        {/* Columna izquierda - Información del usuario y estadísticas */}
+        {/* --- Columna izquierda --- */}
         <div className="col-md-4 mb-5">
           <div className="sticky-top" style={{ top: '20px', zIndex: 999 }}>
-            {/* Información del usuario */}
+            {/* --- Info usuario --- */}
             <div className="text-center mb-4">
               <div className="position-relative d-inline-block mb-3">
                 <img 
@@ -431,7 +478,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 </div>
               )}
             </div>
-            {/* Estadísticas principales */}
+            {/* --- Stats principales --- */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
                 <div className="col-3">
@@ -464,16 +511,16 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 </div>
               </div>
             </div>
-            {/* Gráfico de distribución de ratings */}
+            {/* --- Gráfico distribución --- */}
             <div className="p-4 rounded" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <h5 className="text-light mb-3">DISTRIBUCIÓN</h5>
               <RatingDistributionChart ratings={userRatings} />
             </div>
           </div>
         </div>
-        {/* Columna derecha - Contenido principal */}
+        {/* --- Columna derecha --- */}
         <div className="col-md-8">
-          {/* Sección de Top 10 Películas */}
+          {/* --- Top 10 películas --- */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Películas</h2>
             {isOwnProfile && (
@@ -538,7 +585,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-          {/* Sección de Top 10 Directores */}
+          {/* --- Top 10 directores --- */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Directores</h2>
             {isOwnProfile && (
@@ -606,7 +653,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-          {/* Sección de Top 10 Actores/Actrices */}
+          {/* --- Top 10 actores --- */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Actores/Actrices</h2>
             {isOwnProfile && (
@@ -677,6 +724,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
+          {/* --- Reviews --- */}
           <h2 className="fw-bold mb-4 text-light">Reviews</h2>
           <div className="mb-5">
             {reviews.length > 0 ? (
@@ -686,7 +734,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <div className="col-md-2">
                       <div className="poster-container">
                         <img
-                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}w342${review.movieDetails.poster_path}` : "/placeholder-poster.svg"}
+                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}` : "/placeholder-poster.svg"}
                           alt={review.movieDetails?.title || review.movieDetails?.name}
                           className="img-fluid rounded"
                         />
@@ -717,55 +765,62 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             )}
           </div>
-          {/* Sección de Listas */}
+          {/* --- Listas --- */}
           <h2 className="fw-bold mb-4 text-light">Mis Listas</h2>
           <div className="mb-5">
             {userLists.length > 0 ? (
               <div className="row g-3">
                 {userLists.map(list => (
                   <div key={list.id} className="col-md-6 col-lg-4">
-  <div 
-    className="p-3 rounded h-100"
-    style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d', cursor: 'pointer' }}
-    onClick={() => navigate(`/list/${list.id}`)}
-  >
-    <h6 className="text-light mb-2">{list.name}</h6>
-    <p className="text-muted small mb-2">{list.description}</p>
-    
-    {/* Mostrar cantidad de películas */}
-    <div className="d-flex align-items-center mb-2">
-      <Film size={16} className="text-muted me-1" />
-      <small className="text-muted">{list.movieCount || 0} películas</small>
-    </div>
-
-    {/* Mostrar previsualizaciones de posters si la lista tiene películas */}
-    {list.movies && list.movies.length > 0 && (
-      <div className="d-flex gap-1 mb-2 overflow-hidden" style={{ height: '60px' }}>
-        {list.movies.slice(0, 3).map((movie, index) => (
-          <img
-            key={movie.id}
-            src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : "/placeholder-poster.svg"}
-            alt={movie.title}
-            className="rounded"
-            style={{ height: '100%', width: 'auto' }}
-          />
-        ))}
-        {list.movies.length > 3 && (
-          <div className="d-flex align-items-center justify-content-center rounded bg-dark" 
-               style={{ height: '100%', width: '40px' }}>
-            <small className="text-muted">+{list.movies.length - 3}</small>
-          </div>
-        )}
-      </div>
-    )}
-
-    <div className="d-flex justify-content-between align-items-center">
-      <small className="text-muted">
-        {new Date(list.createdAt).toLocaleDateString('es-MX')}
-      </small>
-    </div>
-  </div>
-</div>
+                    <div 
+                      className="p-3 rounded h-100"
+                      style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d', cursor: 'pointer' }}
+                      onClick={() => navigate(`/lista/${list.id}`)}
+                    >
+                      <h6 className="text-light mb-2">{list.name}</h6>
+                      <p className="text-muted small mb-2">{list.description}</p>
+                      <div className="d-flex align-items-center mb-2">
+                        <Film size={16} className="text-muted me-1" />
+                        <small className="text-muted">
+                          {
+                            typeof list.movieCount === 'number'
+                              ? list.movieCount
+                              : (list.movies?.length || 0)
+                          } películas
+                        </small>
+                      </div>
+                      {list.movies && list.movies.length > 0 && (
+                      <div className="d-flex gap-1 mb-2 overflow-hidden" style={{ height: '60px' }}>
+                      {list.movies.slice(0, 3).map((movie, index) => (
+                      <div key={movie.id} className="position-relative" style={{ height: '100%', width: 'auto' }}>
+                      <img
+                      src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : "/placeholder-poster.svg"}
+                      alt={movie.title}
+                      className="rounded"
+                      style={{ height: '100%', width: 'auto' }}
+                      />
+                      {list.isNumbered && (
+                      <div className="position-absolute top-0 start-0 bg-dark text-white px-1 py-0 rounded" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                      #{movie.order || index + 1}
+                      </div>
+                      )}
+                      </div>
+                      ))}
+                      {list.movies.length > 3 && (
+                      <div className="d-flex align-items-center justify-content-center rounded bg-dark" 
+                      style={{ height: '100%', width: '40px' }}>
+                      <small className="text-muted">+{list.movies.length - 3}</small>
+                      </div>
+                      )}
+                      </div>
+                      )}
+                      <div className="d-flex justify-content-between align-items-center">
+                        <small className="text-muted">
+                          {new Date(list.createdAt).toLocaleDateString('es-MX')}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
