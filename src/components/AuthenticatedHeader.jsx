@@ -13,7 +13,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    const fetchProfilePicture = async () => {
+    const fetchProfileData = async () => {
       if (!userId || isNaN(Number(userId))) return;
       const token = localStorage.getItem('token');
       try {
@@ -22,18 +22,21 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         });
         if (response.ok) {
           const userData = await response.json();
-          setProfilePicture(userData.profilePicture ? getApiUrl(`${userData.profilePicture}`) : null);
+          setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
+          setUsername(userData.username); // Actualizar el nombre de usuario
         }
       } catch (error) {
-        console.error('Error fetching profile picture:', error);
+        console.error('Error fetching profile data:', error);
       }
     };
-    fetchProfilePicture();
+    fetchProfileData();
   }, [userId]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setShowDropdown(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -44,13 +47,23 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   useEffect(() => {
     const handleStorageChange = () => {
       const updatedUsername = localStorage.getItem('username');
-      setUsername(updatedUsername);
+      if (updatedUsername !== username) {
+        setUsername(updatedUsername);
+      }
     };
     window.addEventListener('storage', handleStorageChange);
+    // También escucha un evento personalizado para forzar la actualización
+    const handleProfileUpdate = () => {
+       const updatedUsername = localStorage.getItem('username');
+       setUsername(updatedUsername);
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [username]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -65,20 +78,16 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     try {
       const response = await fetch(getApiUrl('/api/users/delete'), {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (response.ok) {
         alert('Tu cuenta ha sido eliminada exitosamente.');
-        handleLogout(); // Cierra sesión y redirige
+        handleLogout();
       } else {
         const errorData = await response.json();
         alert(`Error al eliminar la cuenta: ${errorData.error || 'Inténtalo de nuevo.'}`);
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       alert('Hubo un problema de red. Por favor, inténtalo de nuevo.');
     }
     setIsDeleteModalOpen(false);
@@ -86,189 +95,167 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
 
   const handleUserSearch = (e) => {
     e.preventDefault();
-    if (userSearchQuery.trim()) navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+    if (userSearchQuery.trim()) {
+      navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+    }
+  };
+
+  const dropdownItemStyle = {
+    display: 'block',
+    width: '100%',
+    padding: '0.5rem 1rem',
+    clear: 'both',
+    fontWeight: 400,
+    color: '#fff',
+    textAlign: 'inherit',
+    whiteSpace: 'nowrap',
+    backgroundColor: 'transparent',
+    border: 0,
+    textDecoration: 'none'
   };
 
   return (
     <>
-      <nav style={{
-        backgroundColor: '#14181c',
-        borderBottom: '1px solid #2c3440',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1000,
-        padding: '0.5rem 1rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          maxWidth: '100%',
-          gap: '1rem'
-        }}>
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
+        <div className="container-fluid">
           {/* Logo */}
-          <Link to="/" style={{
-            color: '#fff',
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap'
-          }}>
-            The Movie Critic
-          </Link>
-          {/* Listas link */}
-          <Link to="/listas" style={{
-            color: 'rgba(255, 255, 255, 0.8)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap'
-          }}>
-            Listas
-          </Link>
-          {/* Search form */}
-          <form onSubmit={handleSearch} style={{
-            flex: 1,
-            maxWidth: '500px',
-            margin: '0 auto'
-          }}>
-            <input 
-              type="search" 
-              placeholder="Buscar películas..." 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              style={{
-                width: '100%',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#2c3440',
-                color: '#fff',
-                border: '1px solid #454d5d',
-                borderRadius: '0.25rem',
-                outline: 'none'
-              }}
-            />
-          </form>
-          {/* User Search form */}
-          <form onSubmit={handleUserSearch} style={{
-            flex: 1,
-            maxWidth: '200px',
-          }}>
-            <input 
-              type="search" 
-              placeholder="Buscar usuarios..." 
-              value={userSearchQuery} 
-              onChange={(e) => setUserSearchQuery(e.target.value)} 
-              style={{
-                width: '100%',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#2c3440',
-                color: '#fff',
-                border: '1px solid #454d5d',
-                borderRadius: '0.25rem',
-                outline: 'none'
-              }}
-            />
-          </form>
-          {/* Profile dropdown */}
-          <div 
-            style={{ position: 'relative' }}
-            ref={dropdownRef}
+          <Link className="navbar-brand fs-4 fw-bold" to="/">The Movie Critic</Link>
+
+          {/* Botón de hamburguesa para móvil */}
+          <button 
+            className="navbar-toggler" 
+            type="button" 
+            data-bs-toggle="collapse" 
+            data-bs-target="#authenticatedNavbar" 
+            aria-controls="authenticatedNavbar" 
+            aria-expanded="false" 
+            aria-label="Toggle navigation"
           >
-            <a 
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowDropdown(!showDropdown);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                color: 'rgba(255, 255, 255, 0.8)',
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                gap: '0.5rem'
-              }}
-            >
-              <img 
-                src={profilePicture ? `${profilePicture}?t=${new Date().getTime()}` : '/placeholder-profile.svg'}
-                alt="Profile" 
-                style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '50%',
-                  objectFit: 'cover'
-                }}
-              />
-              {username || 'angel_eyes'}
-            </a>
-            {showDropdown && (
-              <ul style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                backgroundColor: '#2c3440',
-                border: '1px solid #454d5d',
-                borderRadius: '0.25rem',
-                listStyle: 'none',
-                padding: '0.5rem 0',
-                margin: '0.5rem 0 0 0',
-                minWidth: '160px',
-                zIndex: 1000
-              }}>
-                <li><Link to="/profile" style={dropdownItemStyle}>Perfil</Link></li>
-                <li><Link to="/visto" style={dropdownItemStyle}>Visto</Link></li>
-                <li><Link to="/mis-listas" style={dropdownItemStyle}>Mis Listas</Link></li>
-                <li><Link to="/watchlist" style={dropdownItemStyle}>Watchlist</Link></li>
-                <li><Link to="/likes" style={dropdownItemStyle}>Likes</Link></li>
-                <li style={{ borderTop: '1px solid #454d5d', margin: '0.5rem 0' }}></li>
-                <li>
-                  <button onClick={handleLogout} style={{
-                    ...dropdownItemStyle,
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}>
-                    Cerrar Sesión
-                  </button>
+            <span className="navbar-toggler-icon"></span>
+          </button>
+
+          {/* Contenido del menú (colapsable) */}
+          <div className="collapse navbar-collapse" id="authenticatedNavbar">
+            {/* Links a la izquierda en desktop */}
+            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+              <li className="nav-item">
+                <Link className="nav-link" to="/listas">Listas</Link>
+              </li>
+            </ul>
+
+            {/* Buscadores en el medio en desktop */}
+            <div className="d-none d-lg-flex gap-2 mx-auto">
+              <form onSubmit={handleSearch} className="d-flex">
+                <input
+                  type="search"
+                  placeholder="Buscar películas..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="form-control bg-dark text-white"
+                />
+              </form>
+              <form onSubmit={handleUserSearch} className="d-flex">
+                <input
+                  type="search"
+                  placeholder="Buscar usuarios..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="form-control bg-dark text-white"
+                />
+              </form>
+            </div>
+            
+            {/* Contenido para el menú móvil */}
+            <div className="d-lg-none">
+              <hr className="text-white-50" />
+              <form onSubmit={handleSearch} className="d-flex mb-2">
+                <input
+                  type="search"
+                  placeholder="Buscar películas..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="form-control bg-dark text-white"
+                />
+              </form>
+              <form onSubmit={handleUserSearch} className="d-flex mb-3">
+                <input
+                  type="search"
+                  placeholder="Buscar usuarios..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="form-control bg-dark text-white"
+                />
+              </form>
+              <h5 className="text-white">Mi Cuenta</h5>
+              <ul className="navbar-nav">
+                <li className="nav-item"><Link to="/profile" className="nav-link">Perfil</Link></li>
+                <li className="nav-item"><Link to="/visto" className="nav-link">Visto</Link></li>
+                <li className="nav-item"><Link to="/mis-listas" className="nav-link">Mis Listas</Link></li>
+                <li className="nav-item"><Link to="/watchlist" className="nav-link">Watchlist</Link></li>
+                <li className="nav-item"><Link to="/likes" className="nav-link">Likes</Link></li>
+                <li className="nav-item"><hr className="text-white-50" /></li>
+                <li className="nav-item">
+                  <button onClick={handleLogout} className="btn btn-link nav-link text-danger">Cerrar Sesión</button>
                 </li>
-                <li style={{ borderTop: '1px solid #454d5d', margin: '0.5rem 0' }}></li>
-                <li>
-                  <button onClick={() => { setIsDeleteModalOpen(true); setShowDropdown(false); }} style={{
-                    ...dropdownItemStyle,
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#dc3545'
-                  }}>
-                    Eliminar Cuenta
-                  </button>
+                <li className="nav-item">
+                  <button onClick={() => setIsDeleteModalOpen(true)} className="btn btn-link nav-link text-warning">Eliminar Cuenta</button>
                 </li>
               </ul>
-            )}
+            </div>
+
+            {/* Dropdown de perfil a la derecha en desktop */}
+            <div className="d-none d-lg-flex" ref={dropdownRef}>
+              <div className="nav-item dropdown">
+                <a 
+                  className="nav-link dropdown-toggle d-flex align-items-center" 
+                  href="#" 
+                  id="navbarDropdown" 
+                  role="button" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                  onClick={(e) => { e.preventDefault(); setShowDropdown(!showDropdown); }}
+                >
+                  <img
+                    src={profilePicture ? `${profilePicture}?t=${new Date().getTime()}` : '/placeholder-profile.svg'}
+                    alt="Profile"
+                    className="rounded-circle me-2"
+                    style={{ width: '30px', height: '30px', objectFit: 'cover' }}
+                  />
+                  {username || 'Perfil'}
+                </a>
+                <ul className={`dropdown-menu dropdown-menu-dark dropdown-menu-end ${showDropdown ? 'show' : ''}`} aria-labelledby="navbarDropdown">
+                  <li><Link to="/profile" style={dropdownItemStyle}>Perfil</Link></li>
+                  <li><Link to="/visto" style={dropdownItemStyle}>Visto</Link></li>
+                  <li><Link to="/mis-listas" style={dropdownItemStyle}>Mis Listas</Link></li>
+                  <li><Link to="/watchlist" style={dropdownItemStyle}>Watchlist</Link></li>
+                  <li><Link to="/likes" style={dropdownItemStyle}>Likes</Link></li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li><button onClick={handleLogout} style={{...dropdownItemStyle, color: '#dc3545'}}>Cerrar Sesión</button></li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li><button onClick={() => setIsDeleteModalOpen(true)} style={{...dropdownItemStyle, color: '#ffc107'}}>Eliminar Cuenta</button></li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </nav>
 
       {isDeleteModalOpen && (
         <div className="modal-backdrop-dark">
-          <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
+          <div className="modal fade show d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
+              <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title text-light">Confirmar Eliminación de Cuenta</h5>
+                  <h5 className="modal-title">Confirmar Eliminación</h5>
                   <button type="button" className="btn-close btn-close-white" onClick={() => setIsDeleteModalOpen(false)}></button>
                 </div>
                 <div className="modal-body">
-                  <p className="text-light">¿Estás seguro de que quieres eliminar tu cuenta permanentemente?</p>
-                  <p className="text-warning small">Esta acción no se puede deshacer. Todos tus datos, incluyendo listas, calificaciones y reviews, se perderán para siempre.</p>
+                  <p>¿Estás seguro de que quieres eliminar tu cuenta permanentemente?</p>
+                  <p className="text-warning small">Esta acción no se puede deshacer.</p>
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</button>
-                  <button type="button" className="btn btn-danger" onClick={handleDeleteAccount}>Sí, eliminar mi cuenta</button>
+                  <button type="button" className="btn btn-danger" onClick={handleDeleteAccount}>Sí, eliminar</button>
                 </div>
               </div>
             </div>
@@ -277,14 +264,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
       )}
     </>
   );
-};
-
-const dropdownItemStyle = {
-  display: 'block',
-  padding: '0.5rem 1rem',
-  color: '#fff',
-  textDecoration: 'none',
-  transition: 'background-color 0.2s'
 };
 
 export default AuthenticatedHeader;
