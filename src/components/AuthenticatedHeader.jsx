@@ -4,14 +4,19 @@ import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
 
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
-  const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const [profilePicture, setProfilePicture] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const userId = localStorage.getItem('userId');
+
+  // Cerrar el menú cuando cambia la ruta
+  useEffect(() => {
+    setIsNavOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -21,16 +26,12 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         navigate('/login');
         return;
       }
-
       const token = localStorage.getItem('token');
-      console.log("Token:", token);
       if (!token) {
         setIsLoading(false);
         navigate('/login');
         return;
       }
-
-      debugger;
       try {
         const response = await fetch(getApiUrl(`/api/users/${userId}`), { 
           headers: { 
@@ -38,7 +39,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
             'Cache-control': 'no-cache'
           } 
         });
-
         if (response.ok) {
           const userData = await response.json();
           setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
@@ -60,7 +60,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         setIsLoading(false);
       }
     };
-
     fetchProfileData();
   }, [userId, location.pathname, navigate, setIsAuthenticated]);
 
@@ -76,10 +75,21 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     e.preventDefault();
     if (userSearchQuery.trim()) {
       navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+      setIsNavOpen(false);
     }
   };
 
-  // Mostrar un loader mientras se cargan los datos
+  const handleMovieSearch = (e) => {
+    e.preventDefault();
+    handleSearch(e);
+    setIsNavOpen(false);
+  };
+
+  const toggleNav = () => {
+    console.log('Toggle clicked! Current state:', isNavOpen); // DEBUG
+    setIsNavOpen(!isNavOpen);
+  };
+
   if (isLoading) {
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
@@ -98,32 +108,40 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
-        <Link className="navbar-brand" to="/">
+        <Link className="navbar-brand" to="/" onClick={() => setIsNavOpen(false)}>
           <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
         </Link>
         
         <button 
-          className="navbar-toggler" 
+          className={`navbar-toggler ${isNavOpen ? '' : 'collapsed'}`}
           type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarContent" 
+          onClick={toggleNav}
           aria-controls="navbarContent" 
-          aria-expanded={!isNavCollapsed} 
-          aria-label="Toggle navigation" 
-          onClick={() => setIsNavCollapsed(!isNavCollapsed)}
+          aria-expanded={isNavOpen}
+          aria-label="Toggle navigation"
+          style={{ 
+            position: 'relative',
+            zIndex: 1031,
+            border: '2px solid white' // Para verlo mejor
+          }}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div className={`${isNavCollapsed ? 'collapse' : ''} navbar-collapse`} id="navbarContent">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+        <div 
+          className={`navbar-collapse ${isNavOpen ? 'show' : 'collapse'}`}
+          id="navbarContent"
+        >
+          <ul className="navbar-nav 3mb-2 mb-lg-0">
             <li className="nav-item">
-              <Link className="nav-link" to="/listas">Listas</Link>
+              <Link className="nav-link" to="/listas" onClick={() => setIsNavOpen(false)}>
+                Listas
+              </Link>
             </li>
           </ul>
 
-          <div className="d-flex flex-column flex-lg-row align-items-center gap-2">
-            <form onSubmit={handleSearch} className="d-flex my-2 my-lg-0">
+          <div className="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 ms-auto">
+            <form onSubmit={handleMovieSearch} className="d-flex my-2 my-lg-0">
               <input
                 type="search"
                 placeholder="Buscar películas..."
@@ -145,13 +163,13 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
 
             <ul className="navbar-nav">
               <li className="nav-item dropdown">
-                <a 
-                  className="nav-link dropdown-toggle d-flex align-items-center" 
-                  href="#" 
+                <button 
+                  className="nav-link dropdown-toggle d-flex align-items-center btn btn-link text-decoration-none"
+                  type="button"
                   id="navbarDropdown" 
-                  role="button" 
                   data-bs-toggle="dropdown" 
                   aria-expanded="false"
+                  style={{ border: 'none', background: 'transparent' }}
                 >
                   <img
                     src={profilePicture || '/placeholder-profile.svg'}
@@ -164,15 +182,15 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                     }}
                   />
                   {username || 'Perfil'}
-                </a>
+                </button>
                 <ul className="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="navbarDropdown">
-                  <li><Link className="dropdown-item" to="/profile">Perfil</Link></li>
-                  <li><Link className="dropdown-item" to="/visto">Visto</Link></li>
-                  <li><Link className="dropdown-item" to="/mis-listas">Mis Listas</Link></li>
-                  <li><Link className="dropdown-item" to="/watchlist">Watchlist</Link></li>
-                  <li><Link className="dropdown-item" to="/likes">Likes</Link></li>
+                  <li><Link className="dropdown-item" to="/profile" onClick={() => setIsNavOpen(false)}>Perfil</Link></li>
+                  <li><Link className="dropdown-item" to="/visto" onClick={() => setIsNavOpen(false)}>Visto</Link></li>
+                  <li><Link className="dropdown-item" to="/mis-listas" onClick={() => setIsNavOpen(false)}>Mis Listas</Link></li>
+                  <li><Link className="dropdown-item" to="/watchlist" onClick={() => setIsNavOpen(false)}>Watchlist</Link></li>
+                  <li><Link className="dropdown-item" to="/likes" onClick={() => setIsNavOpen(false)}>Likes</Link></li>
                   <li><hr className="dropdown-divider" /></li>
-                  <li><button className="dropdown-item text-danger" onClick={handleLogout}>Cerrar Sesión</button></li>
+                  <li><button className="dropdown-item text-danger" onClick={() => { handleLogout(); setIsNavOpen(false); }}>Cerrar Sesión</button></li>
                 </ul>
               </li>
             </ul>

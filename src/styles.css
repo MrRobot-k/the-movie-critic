@@ -5,7 +5,7 @@ body {
 }
 
 .text-muted {
-  color: #ced4da !important; /* Aclarar el color del texto silenciado */
+  color: #ced4da !important;
 }
 
 /* Dropdown del perfil */
@@ -124,7 +124,7 @@ div.modal-backdrop {
   padding: 40px 0 20px 0;
   margin-top: 60px;
   background-color: #0f1419;
-  color: #adb5bd; /* Color de texto del footer aclarado */
+  color: #adb5bd;
 }
 
 .app-footer h5,
@@ -133,7 +133,7 @@ div.modal-backdrop {
 }
 
 .app-footer a {
-  color: #ced4da; /* Color de enlace del footer aclarado */
+  color: #ced4da;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -218,18 +218,27 @@ div.modal-backdrop {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
 }
+
 /* Estilos para listas */
-.movie-card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+.movie-card-hover {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
 .movie-card-hover:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
+
 .list-group-item {
   background-color: #2c3440 !important;
   border-color: #454d5d !important;
   color: #fff !important;
 }
-.list-group-item:hover { background-color: #3a3f47 !important; }
+
+.list-group-item:hover {
+  background-color: #3a3f47 !important;
+}
+
 /* Estilos para navegación de modal */
 .modal-nav-button {
   position: fixed;
@@ -245,22 +254,64 @@ div.modal-backdrop {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 1060; /* Mayor que el z-index del modal */
+  z-index: 1060;
   transition: background-color 0.2s;
 }
-.modal-nav-button:hover { background-color: rgba(0, 0, 0, 0.8); }
+
+.modal-nav-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
 .modal-nav-button:disabled {
   background-color: rgba(0, 0, 0, 0.2);
   cursor: not-allowed;
   opacity: 0.5;
 }
-.modal-nav-button.prev { left: 20px; }
-.modal-nav-button.next { right: 20px; }
 
-/* Estilos para el navbar */
+.modal-nav-button.prev {
+  left: 20px;
+}
+
+.modal-nav-button.next {
+  right: 20px;
+}
+
+.poster-container {
+  position: relative;
+  width: 100%;
+  padding-top: 150%;
+  overflow: hidden;
+  border-radius: 0.25rem;
+}
+
+.poster-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ===== NAVBAR - ESTILOS COMPLETOS ===== */
+
+/* Estilos base del navbar */
 .navbar {
   background-color: #14181c !important;
   border-bottom: 1px solid #2c3440;
+}
+
+.navbar.fixed-top {
+  z-index: 1030 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+header {
+  z-index: 1030 !important;
 }
 
 .navbar-brand {
@@ -275,6 +326,28 @@ div.modal-backdrop {
   color: #fff !important;
 }
 
+/* Botón toggler */
+.navbar-toggler {
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  padding: 0.5rem 0.75rem;
+}
+
+.navbar-toggler:focus {
+  box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.5) !important;
+  outline: none;
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+/* Formularios */
+.form-control {
+  background-color: #2c3440 !important;
+  color: #fff !important;
+  border: 1px solid #454d5d !important;
+}
+
 .form-control:focus {
   background-color: #3a3f47 !important;
   color: #fff !important;
@@ -282,9 +355,11 @@ div.modal-backdrop {
   box-shadow: none;
 }
 
+/* Dropdown */
 .dropdown-menu-dark {
   background-color: #2c3440;
   border: 1px solid #454d5d;
+  z-index: 1031 !important;
 }
 
 .dropdown-menu-dark .dropdown-item {
@@ -299,44 +374,177 @@ div.modal-backdrop {
   border-color: #454d5d;
 }
 
-/* Asegurar que el navbar-collapse se muestre en desktop */
+/* Transición del collapse */
+.navbar-collapse {
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+/* ===== ESTILOS RESPONSIVE ===== */
+
 @media (min-width: 992px) {
+  body {
+    padding-top: 70px;
+  }
+
+  /* Fuerza la visualización del navbar-collapse en desktop */
   .navbar-collapse {
     display: flex !important;
-  }
-}
-/* Asegurar que el navbar-collapse se muestre siempre en desktop */
-@media (min-width: 992px) {
-  #navbarContent {
-    display: flex !important;
     flex-basis: auto;
-  }
-}
-
-/* Para móviles, mantener el comportamiento normal */
-@media (max-width: 991.98px) {
-  #navbarContent {
-    display: none;
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: auto !important;
+    visibility: visible !important;
   }
   
-  #navbarContent.show {
+  /* Elimina cualquier estilo de collapse en desktop */
+  .navbar-collapse.collapse {
+    display: flex !important;
+    height: auto !important;
+    visibility: visible !important;
+  }
+  
+  #navbarContent {
+    display: flex !important;
+    width: 100%;
+    justify-content: space-between;
+    padding: 0 !important;
+    margin: 0 !important;
+    background-color: transparent !important;
+  }
+  
+  /* Asegura que los formularios sean visibles */
+  #navbarContent form {
+    width: auto !important;
     display: block !important;
+  }
+
+  #navbarContent form input {
+    width: 200px !important; /* Ancho fijo o auto */
+  }
+
+  /* Flex container en fila para desktop */
+  .d-flex.flex-column.flex-lg-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    width: auto !important;
+    display: flex !important;
+  }
+
+  /* Links visibles */
+  #navbarContent .nav-link {
+    padding: 0.5rem 1rem;
+    border-bottom: none !important;
+    display: block !important;
+  }
+
+  /* Dropdown posicionado correctamente */
+  #navbarContent .dropdown-menu {
+    position: absolute !important;
+  }
+
+  /* Ocultar el botón toggler en desktop */
+  .navbar-toggler {
+    display: none !important;
+  }
+  
+  /* Asegurar que el navbar-nav sea flexible */
+  .navbar-nav {
+    display: flex !important;
+    flex-direction: row !important;
   }
 }
 
-.poster-container {
-  position: relative;
-  width: 100%;
-  padding-top: 150%; /* 2:3 aspect ratio (3 / 2 * 100) */
-  overflow: hidden;
-  border-radius: 0.25rem;
-}
+/* MÓVIL Y TABLET - Menor a 992px */
+@media (max-width: 991.98px) {
+  /* Ajustar padding del body */
+  body {
+    padding-top: 60px;
+  }
+  
+  /* Mostrar el botón toggler en móvil */
+  .navbar-toggler {
+    display: block !important;
+  }
 
-.poster-container img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  /* Contenedor del menú colapsado */
+  .navbar-collapse {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #14181c;
+    border: 1px solid #2c3440;
+    border-top: none;
+    z-index: 1029;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+  }
+  
+  .navbar-collapse.show {
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    opacity: 1;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Padding interno del menú */
+  #navbarContent {
+    padding: 1rem !important;
+    background-color: #14181c !important;
+  }
+  
+  /* Formularios ocupan todo el ancho */
+  #navbarContent form {
+    width: 100% !important;
+    margin: 0.5rem 0;
+  }
+  
+  #navbarContent form input {
+    width: 100% !important;
+  }
+  
+  /* Links del navbar */
+  #navbarContent .nav-link {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #2c3440;
+  }
+  
+  /* Contenedor flex en columna */
+  .d-flex.flex-column.flex-lg-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  /* Dropdown de perfil en móvil */
+  #navbarContent .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    margin-top: 0.5rem;
+    border: none;
+    box-shadow: none;
+  }
+  
+  #navbarContent .dropdown-toggle {
+    width: 100%;
+    justify-content: flex-start !important;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #2c3440;
+  }
+  
+  /* Ajustar el navbar */
+  .navbar-nav {
+    width: 100%;
+  }
+  
+  .navbar-nav .nav-item {
+    width: 100%;
+  }
 }
