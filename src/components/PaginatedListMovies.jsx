@@ -1,15 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Star, Heart, Eye } from 'lucide-react';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const ITEMS_PER_PAGE = 24;
 
-const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isNumbered = false }) => {
+const renderStars = (score) => {
+  const fullStars = Math.floor(score);
+  const halfStar = score % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+  return (
+    <>
+      {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={12} fill="currentColor" className="text-warning" />)}
+      {halfStar && <Star key="half" size={12} fill="currentColor" className="text-warning" style={{ clipPath: 'inset(0 50% 0 0)' }} />}
+      {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} size={12} className="text-secondary" />)}
+    </>
+  );
+};
+
+const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], likedItems = [], watchedItems = [], isNumbered = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState('custom'); // Default to custom order from list
   const [fullMovieListDetails, setFullMovieListDetails] = useState([]); // Stores all fetched movie details
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = true;
   const [error, setError] = useState(null);
 
   // Effect to fetch all movie details when listItems changes
@@ -19,6 +34,8 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isN
       setError(null);
       try {
         const ratingsMap = new Map(userRatings.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
+        const likedMap = new Set(likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+        const watchedMap = new Set(watchedItems.map(item => `${item.mediaId}-${item.mediaType}`));
 
         const movieDetailsPromises = listItems.map(async (item) => {
           const detailRes = await fetch(
@@ -27,7 +44,9 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isN
           if (!detailRes.ok) throw new Error(`Failed to fetch details for ${item.mediaId}`);
           const detail = await detailRes.json();
           const userScore = ratingsMap.get(`${item.mediaId}-${item.mediaType}`) || 0;
-          return { ...detail, media_type: item.mediaType, id: item.mediaId, userScore, listOrder: item.order };
+          const isLiked = likedMap.has(`${item.mediaId}-${item.mediaType}`);
+          const isWatched = watchedMap.has(`${item.mediaId}-${item.mediaType}`);
+          return { ...detail, media_type: item.mediaType, id: item.mediaId, userScore, isLiked, isWatched, listOrder: item.order };
         });
         const fetchedMovies = await Promise.all(movieDetailsPromises);
         setFullMovieListDetails(fetchedMovies);
@@ -45,7 +64,7 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isN
       setFullMovieListDetails([]);
       setLoading(false);
     }
-  }, [listItems, userRatings]); // Re-fetch all details when the listItems prop changes
+  }, [listItems, userRatings, likedItems, watchedItems]); // Re-fetch all details when the listItems prop changes
 
   // Memoize the sorted full movie list based on sortOrder
   const sortedMovies = useMemo(() => {
@@ -116,6 +135,17 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], isN
                   {isNumbered && (
                     <div className="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 rounded-end" style={{ fontSize: '12px', fontWeight: 'bold' }}>
                       #{movie.listOrder}
+                    </div>
+                  )}
+                  {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
+                    <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                      {movie.userScore > 0 && (
+                        <span className="d-flex align-items-center">
+                          {renderStars(movie.userScore)}
+                        </span>
+                      )}
+                      {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
+                      {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
                     </div>
                   )}
                 </div>

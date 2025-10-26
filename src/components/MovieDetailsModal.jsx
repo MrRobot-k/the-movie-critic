@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Heart, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Heart, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { getApiUrl } from '../config/api';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+
+const renderStars = (score) => {
+  const fullStars = Math.floor(score);
+  const halfStar = score % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+  return (
+    <>
+      {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={16} fill="currentColor" className="text-warning" />)}
+      {halfStar && <Star key="half" size={16} fill="currentColor" className="text-warning" style={{ clipPath: 'inset(0 50% 0 0)' }} />}
+      {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} size={16} className="text-secondary" />)}
+    </>
+  );
+};
+
 const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, onMovieRated, movieList, currentIndex, onNavigate }) => {
   if (!movie) return null;
   // Estados del componente
@@ -19,6 +34,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
   const [allReviews, setAllReviews] = useState([]);
   const [reviewError, setReviewError] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
+
   // Obtener título y detalles según el tipo de contenido
   const getTitle = () => {
     return movie.title || movie.name || 'Título no disponible';
@@ -38,6 +54,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
   const fetchUserRating = async () => {
     const token = localStorage.getItem('token');
     if (!token || !userId || !movie.id) return 0;
+    console.log('fetchUserRating: movie.id', movie.id, 'movie.media_type', movie.media_type);
     try {
       const response = await fetch(getApiUrl(`api/media/${movie.id}/rating?mediaType=${movie.media_type}`), {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -290,6 +307,20 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
               <div className="p-4">
                 <h2 className="fw-bold">{getTitle()}</h2>
                 {getOriginalTitle() && getOriginalTitle() !== getTitle() && <p className="fst-italic">{getOriginalTitle()}</p>}
+                
+                {(userRating > 0 || isLiked || isWatched) && isAuthenticated && (
+                  <div className="d-flex align-items-center gap-3 mt-2 mb-3">
+                    {console.log(`MovieDetailsModal - Movie: ${movie.title || movie.name}, User Rating: ${userRating}, Is Liked: ${isLiked}, Is Watched: ${isWatched}`)}
+                    {userRating > 0 && (
+                      <span className="d-flex align-items-center gap-1">
+                        {renderStars(userRating)}
+                      </span>
+                    )}
+                    {isLiked && <Heart size={20} fill="currentColor" className="text-danger" />}
+                    {isWatched && <Eye size={20} fill="currentColor" className="text-success" />}
+                  </div>
+                )}
+
                 <div className="d-flex align-items-center gap-3 mt-2">
                   <div className="d-flex align-items-center gap-1">
                     <Star color="#ffc107" size={16} />

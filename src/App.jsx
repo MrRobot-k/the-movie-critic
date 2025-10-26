@@ -78,7 +78,7 @@ export default function App() {
         ...details,
         director: credits.crew.find((person) => person.job === "Director"),
         cast: credits.cast,
-        mediaType: effectiveMediaType,
+        media_type: effectiveMediaType, // Corrected to media_type
         userScore,
       });
       if (list) {

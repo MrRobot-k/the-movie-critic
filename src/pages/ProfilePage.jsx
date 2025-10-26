@@ -8,6 +8,21 @@ import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+
+const renderStars = (score) => {
+  const fullStars = Math.floor(score);
+  const halfStar = score % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+  return (
+    <>
+      {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={12} fill="currentColor" className="text-warning" />)}
+      {halfStar && <Star key="half" size={12} fill="currentColor" className="text-warning" style={{ clipPath: 'inset(0 50% 0 0)' }} />}
+      {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} size={12} className="text-secondary" />)}
+    </>
+  );
+};
+
 const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate }) => {
   const navigate = useNavigate();
   const { userId: paramUserId } = useParams();
@@ -66,23 +81,25 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setSlogan(userData.slogan || '');
         setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
       } else if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/ratings-with-scores`), { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      let allUserRatings = [];
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/ratings-with-scores`), {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (ratingsRes.ok) {
         const data = await ratingsRes.json();
-        setUserRatings(data.ratings || []);
-        setStats(prev => ({ ...prev, watched: data.ratings?.length || 0 }));
+        allUserRatings = data.ratings || [];
+        setUserRatings(allUserRatings);
+        setStats(prev => ({ ...prev, watched: allUserRatings?.length || 0 }));
       } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (likesStatsRes.ok) {
         const data = await likesStatsRes.json();
         setStats(prev => ({ ...prev, likes: data.likedItems?.length || 0 }));
       }
-      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watchlist`), { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watchlist`), {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (watchlistStatsRes.ok) {
         const data = await watchlistStatsRes.json();
@@ -147,11 +164,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setUserLists(detailedLists);
         setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
-      const likesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const likesRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/likes`), {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      const watchedRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`), { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const watchedRes = await fetch(getApiUrl(`/api/users/${userIdToFetch}/watched`), {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       let likedItems = [];
@@ -176,13 +193,13 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
             const detail = await detailRes.json();
             
-            const userRating = userRatings.find(r => r.mediaId === item.mediaId);
+            const userRating = allUserRatings.find(r => r.mediaId === item.mediaId); // Use allUserRatings here
             const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
             const isWatched = watchedItems.some(w => w.mediaId === item.mediaId);
 
-            return { 
-              ...detail, 
-              mediaType: item.mediaType, 
+            return {
+              ...detail,
+              mediaType: item.mediaType,
               order: item.order,
               userScore: userRating ? userRating.score : null,
               isLiked: isLiked,
@@ -631,6 +648,17 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                         <div className="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 rounded-end">
                           #{index + 1}
                         </div>
+                        {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
+                          <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                            {movie.userScore > 0 && (
+                              <span className="d-flex align-items-center">
+                                {renderStars(movie.userScore)}
+                              </span>
+                            )}
+                            {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
+                            {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
+                          </div>
+                        )}
                       </div>
                       {isOwnProfile && (
                         <button

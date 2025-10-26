@@ -2,8 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MovieDetailsModal from './MovieDetailsModal';
 import { getApiUrl } from '../config/api';
+import { Star, Heart, Eye } from 'lucide-react';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+
+const renderStars = (score) => {
+  const fullStars = Math.floor(score);
+  const halfStar = score % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+  return (
+    <>
+      {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={12} fill="currentColor" className="text-warning" />)}
+      {halfStar && <Star key="half" size={12} fill="currentColor" className="text-warning" style={{ clipPath: 'inset(0 50% 0 0)' }} />}
+      {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} size={12} className="text-secondary" />)}
+    </>
+  );
+};
+
 const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, getMovieDetails, selectedMovie, onCloseDetails, query, clearSearch, moviesData }) => {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,12 +159,68 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         }
         const data1 = await response1.json();
         const data2 = response2.ok ? await response2.json() : { results: [] };
-        const combinedResults = [...data1.results, ...data2.results];
+        let combinedResults = [...data1.results, ...data2.results];
+
+        // Filter out duplicates if any (can happen with pagination overlap or API quirks)
+        const uniqueResults = new Map();
+        combinedResults.forEach(item => {
+          if (item.id) {
+            uniqueResults.set(item.id, item);
+          }
+        });
+        combinedResults = Array.from(uniqueResults.values());
+
         const offset = startIndex % moviesPerTmdbPage;
         allMovies = combinedResults.slice(offset, offset + desiredMoviesPerPage).map(item => ({
           ...item,
           mediaType: item.media_type || (item.title ? 'movie' : 'tv')
         }));
+
+        // Fetch user ratings, liked, and watched status if authenticated and merge them
+        const authToken = localStorage.getItem('token');
+        if (authToken) {
+          try {
+            const [userRatingsResponse, userLikesResponse, userWatchedResponse] = await Promise.all([
+              fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${authToken}` } }),
+              fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${authToken}` } }),
+              fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${authToken}` } }) // Assuming watched is same as ratings
+            ]);
+
+            let ratingsMap = new Map();
+            if (userRatingsResponse.ok) {
+              const userRatingsData = await userRatingsResponse.json();
+              ratingsMap = new Map(userRatingsData.watchedMovies.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
+            } else {
+              console.warn('Failed to fetch user ratings for TMDB movies:', userRatingsResponse.status);
+            }
+
+            let likedMap = new Set();
+            if (userLikesResponse.ok) {
+              const userLikesData = await userLikesResponse.json();
+              likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+            } else {
+              console.warn('Failed to fetch user likes for TMDB movies:', userLikesResponse.status);
+            }
+
+            let watchedMap = new Set();
+            if (userWatchedResponse.ok) {
+              const userWatchedData = await userWatchedResponse.json();
+              watchedMap = new Set(userWatchedData.watchedMovies.map(item => `${item.mediaId}-${item.mediaType}`));
+            } else {
+              console.warn('Failed to fetch user watched status for TMDB movies:', userWatchedResponse.status);
+            }
+
+            allMovies = allMovies.map(movie => ({
+              ...movie,
+              userScore: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null,
+              isLiked: likedMap.has(`${movie.id}-${movie.mediaType}`),
+              isWatched: watchedMap.has(`${movie.id}-${movie.mediaType}`)
+            }));
+          } catch (mergeError) {
+            console.error('Error merging user data for TMDB movies:', mergeError);
+          }
+        }
+
         const totalTmdbResults = data1.total_results;
         setTotalPages(Math.ceil(totalTmdbResults / desiredMoviesPerPage));
         setMovies(allMovies);
@@ -342,10 +414,9 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         <p>No hay películas para mostrar.</p>
       ) : (
         <div className="row g-1 poster-grid">
-          {movies.map((movie) => (
-            <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-                                          <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>
-                <div className="poster-container">
+                              {movies.map((movie) => (
+                                <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
+                                  <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>                <div className="poster-container">
                   <img
                     src={
                       movie.poster_path
@@ -355,9 +426,15 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
                     alt={movie.title || movie.name}
                   />
                 </div>
-                {movie.userScore && (
-                  <div className="user-score-overlay">
-                    <span>{movie.userScore.toFixed(1)}</span>
+                {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
+                  <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                    {movie.userScore > 0 && (
+                      <span className="d-flex align-items-center">
+                        {renderStars(movie.userScore)}
+                      </span>
+                    )}
+                    {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
+                    {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
                   </div>
                 )}
               </div>

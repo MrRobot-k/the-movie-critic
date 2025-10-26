@@ -10,59 +10,97 @@ const ViewListPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthen
   const [list, setList] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [userRatings, setUserRatings] = useState([]);
-  const [watchedInListCount, setWatchedInListCount] = useState(0);
-  useEffect(() => {
-    loadList();
-    if (isAuthenticated) loadUserRatings();
-  }, [listId, isAuthenticated]);
-  useEffect(() => {
-    if (list && userRatings.length > 0) {
-      const listMediaIds = list.items.map(item => item.mediaId.toString());
-      const watchedMediaIds = new Set(userRatings.map(rating => rating.mediaId.toString()));
-      const count = listMediaIds.filter(id => watchedMediaIds.has(id)).length;
-      setWatchedInListCount(count);
-    }
-  }, [list, userRatings]);
-  const loadList = async () => {
-    try {
-      const response = await fetch(getApiUrl(`/api/lists/${listId}`));
-      if (response.ok) {
-        const data = await response.json();
-        setList(data.list);
-      } else setError('Lista no encontrada');
-    } catch (error) {
-      setError('Error al cargar la lista');
-      console.error('Error loading list:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleAuthError = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    navigate('/login');
-    setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
-  };
-  const loadUserRatings = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-      const response = await fetch(getApiUrl('/api/users/watched'), {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const [userRatings, setUserRatings] = useState([]);
+      const [watchedInListCount, setWatchedInListCount] = useState(0);
+      const [allLoadedUserRatings, setAllLoadedUserRatings] = useState([]);
+      const [allLoadedLikedItems, setAllLoadedLikedItems] = useState([]);
+      const [allLoadedWatchedItems, setAllLoadedWatchedItems] = useState([]);
+    
+      useEffect(() => {
+        const fetchData = async () => {
+          setLoading(true);
+          await loadList();
+          if (isAuthenticated) {
+            const fetchedRatings = await loadWatchedItems(); // Renamed from loadUserRatings
+            setAllLoadedUserRatings(fetchedRatings);
+            const fetchedLiked = await loadLikedItems();
+            setAllLoadedLikedItems(fetchedLiked);
+            // Assuming watchedItems are the same as userRatings for now, if not, a separate fetch is needed
+            setAllLoadedWatchedItems(fetchedRatings);
+          }
+          setLoading(false);
+        };
+        fetchData();
+      }, [listId, isAuthenticated]);
+    
+      useEffect(() => {
+        if (list && allLoadedWatchedItems.length > 0) {
+          const listMediaIds = list.items.map(item => item.mediaId.toString());
+          const watchedMediaIds = new Set(allLoadedWatchedItems.map(rating => rating.mediaId.toString()));
+          const count = listMediaIds.filter(id => watchedMediaIds.has(id)).length;
+          setWatchedInListCount(count);
         }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUserRatings(data.watchedMovies);
-      } else if (response.status === 401 || response.status === 403) handleAuthError();
-    } catch (error) {
-      console.error('Error loading user ratings:', error);
-    }
-  };
-  const totalMovies = list ? list.items.length : 0;
+      }, [list, allLoadedWatchedItems]);
+    
+      const loadList = async () => {
+        try {
+          const response = await fetch(getApiUrl(`/api/lists/${listId}`));
+          if (response.ok) {
+            const data = await response.json();
+            setList(data.list);
+          } else setError('Lista no encontrada');
+        } catch (error) {
+          setError('Error al cargar la lista');
+          console.error('Error loading list:', error);
+        }
+      };
+    
+      const handleAuthError = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username');
+        navigate('/login');
+        setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
+      };
+    
+      const loadWatchedItems = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return [];
+        try {
+          const response = await fetch(getApiUrl('/api/users/watched'), {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUserRatings(data.watchedMovies);
+            return data.watchedMovies;
+          } else if (response.status === 401 || response.status === 403) handleAuthError();
+        } catch (error) {
+          console.error('Error loading watched items:', error);
+        }
+        return [];
+      };
+    
+      const loadLikedItems = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return [];
+        try {
+          const response = await fetch(getApiUrl('/api/users/likes'), {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return data.likedItems;
+          } else if (response.status === 401 || response.status === 403) handleAuthError();
+        } catch (error) {
+          console.error('Error loading liked items:', error);
+        }
+        return [];
+      };  const totalMovies = list ? list.items.length : 0;
   const percentageWatched = totalMovies > 0 ? (watchedInListCount / totalMovies) * 100 : 0;
   if (loading) {
     return (
@@ -130,7 +168,14 @@ const ViewListPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthen
         </div>
       )}
       {list.items && list.items.length > 0 ? (
-        <PaginatedListMovies listItems={list.items} getMovieDetails={getMovieDetails} userRatings={userRatings} isNumbered={list.isNumbered} />
+        <PaginatedListMovies
+          listItems={list.items}
+          getMovieDetails={getMovieDetails}
+          userRatings={allLoadedUserRatings}
+          likedItems={allLoadedLikedItems}
+          watchedItems={allLoadedWatchedItems}
+          isNumbered={list.isNumbered}
+        />
       ) : (
         <p>Esta lista no tiene películas.</p>
       )}
