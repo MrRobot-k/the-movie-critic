@@ -686,7 +686,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <div className="col-md-2">
                       <div className="poster-container">
                         <img
-                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}w342${review.movieDetails.poster_path}` : "placeholder-poster.svg"}
+                          src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}w342${review.movieDetails.poster_path}` : "/placeholder-poster.svg"}
                           alt={review.movieDetails?.title || review.movieDetails?.name}
                           className="img-fluid rounded"
                         />
@@ -695,9 +695,14 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     <div className="col-md-10">
                       <div className="d-flex justify-content-between align-items-start mb-2">
                         <h5 className="text-light mb-0">{review.movieDetails?.title || review.movieDetails?.name}</h5>
-                        <div className="d-flex align-items-center">
-                          <Star size={16} className="text-warning me-1" />
-                          <span className="text-light fw-bold">{review.rating}</span>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="d-flex align-items-center">
+                            <Star size={16} className="text-warning me-1" />
+                            <span className="text-light fw-bold">{review.rating}</span>
+                          </div>
+                          {review.hasLiked && (
+                            <Heart size={16} className="text-danger" fill="currentColor" />
+                          )}
                         </div>
                       </div>
                       <p className="text-light">{review.comment}</p>
