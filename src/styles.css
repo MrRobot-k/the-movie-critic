@@ -307,7 +307,7 @@ div.modal-backdrop {
 }
 /* Asegurar que el navbar-collapse se muestre siempre en desktop */
 @media (min-width: 992px) {
-  #navbarNav {
+  #navbarContent {
     display: flex !important;
     flex-basis: auto;
   }
@@ -315,11 +315,11 @@ div.modal-backdrop {
 
 /* Para móviles, mantener el comportamiento normal */
 @media (max-width: 991.98px) {
-  #navbarNav {
+  #navbarContent {
     display: none;
   }
   
-  #navbarNav.show {
+  #navbarContent.show {
     display: block !important;
   }
 }

@@ -146,6 +146,7 @@ export default function App() {
   return (
     <div>
       <header>
+        {console.log('App.jsx: Rendering header. isAuthenticated:', isAuthenticated)}
         {isAuthenticated ? (
           <AuthenticatedHeader
             query={query}
