@@ -407,7 +407,9 @@ header {
     height: auto !important;
     visibility: visible !important;
   }
-  
+  .navbar-collapse.collapse:not(.show) {
+    display: flex !important;
+  }
   #navbarContent {
     display: flex !important;
     width: 100%;
@@ -456,6 +458,14 @@ header {
   .navbar-nav {
     display: flex !important;
     flex-direction: row !important;
+  }
+
+  .dropdown-menu.show {
+    display: block !important;
+  }
+  
+  .nav-item.dropdown.show .dropdown-menu {
+    display: block !important;
   }
 }
 
@@ -546,5 +556,13 @@ header {
   
   .navbar-nav .nav-item {
     width: 100%;
+  }
+
+  .dropdown-menu.show {
+    display: block !important;
+    position: static !important;
+    float: none !important;
+    width: 100% !important;
+    margin-top: 0.5rem !important;
   }
 }

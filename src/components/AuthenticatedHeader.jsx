@@ -9,6 +9,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // ← NUEVO estado para dropdown
   const navigate = useNavigate();
   const location = useLocation();
   const userId = localStorage.getItem('userId');
@@ -16,6 +17,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   // Cerrar el menú cuando cambia la ruta
   useEffect(() => {
     setIsNavOpen(false);
+    setIsDropdownOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -86,8 +88,11 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
   };
 
   const toggleNav = () => {
-    console.log('Toggle clicked! Current state:', isNavOpen); // DEBUG
     setIsNavOpen(!isNavOpen);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
   if (isLoading) {
@@ -119,11 +124,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
           aria-controls="navbarContent" 
           aria-expanded={isNavOpen}
           aria-label="Toggle navigation"
-          style={{ 
-            position: 'relative',
-            zIndex: 1031,
-            border: '2px solid white' // Para verlo mejor
-          }}
         >
           <span className="navbar-toggler-icon"></span>
         </button>
@@ -132,7 +132,7 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
           className={`navbar-collapse ${isNavOpen ? 'show' : 'collapse'}`}
           id="navbarContent"
         >
-          <ul className="navbar-nav 3mb-2 mb-lg-0">
+          <ul className="navbar-nav mb-2 mb-lg-0">
             <li className="nav-item">
               <Link className="nav-link" to="/listas" onClick={() => setIsNavOpen(false)}>
                 Listas
@@ -162,13 +162,11 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
             </form>
 
             <ul className="navbar-nav">
-              <li className="nav-item dropdown">
+              <li className={`nav-item dropdown ${isDropdownOpen ? 'show' : ''}`}>
                 <button 
                   className="nav-link dropdown-toggle d-flex align-items-center btn btn-link text-decoration-none"
                   type="button"
-                  id="navbarDropdown" 
-                  data-bs-toggle="dropdown" 
-                  aria-expanded="false"
+                  onClick={toggleDropdown}
                   style={{ border: 'none', background: 'transparent' }}
                 >
                   <img
@@ -183,14 +181,24 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                   />
                   {username || 'Perfil'}
                 </button>
-                <ul className="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="navbarDropdown">
-                  <li><Link className="dropdown-item" to="/profile" onClick={() => setIsNavOpen(false)}>Perfil</Link></li>
-                  <li><Link className="dropdown-item" to="/visto" onClick={() => setIsNavOpen(false)}>Visto</Link></li>
-                  <li><Link className="dropdown-item" to="/mis-listas" onClick={() => setIsNavOpen(false)}>Mis Listas</Link></li>
-                  <li><Link className="dropdown-item" to="/watchlist" onClick={() => setIsNavOpen(false)}>Watchlist</Link></li>
-                  <li><Link className="dropdown-item" to="/likes" onClick={() => setIsNavOpen(false)}>Likes</Link></li>
+                <ul className={`dropdown-menu dropdown-menu-dark dropdown-menu-end ${isDropdownOpen ? 'show' : ''}`}>
+                  <li><Link className="dropdown-item" to="/profile" onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}>Perfil</Link></li>
+                  <li><Link className="dropdown-item" to="/visto" onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}>Visto</Link></li>
+                  <li><Link className="dropdown-item" to="/mis-listas" onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}>Mis Listas</Link></li>
+                  <li><Link className="dropdown-item" to="/watchlist" onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}>Watchlist</Link></li>
+                  <li><Link className="dropdown-item" to="/likes" onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}>Likes</Link></li>
+                  {/* AÑADIR OPCIÓN DE ELIMINAR CUENTA */}
                   <li><hr className="dropdown-divider" /></li>
-                  <li><button className="dropdown-item text-danger" onClick={() => { handleLogout(); setIsNavOpen(false); }}>Cerrar Sesión</button></li>
+                  <li>
+                    <Link 
+                      className="dropdown-item text-warning" 
+                      to="/profile#delete-account" 
+                      onClick={() => { setIsNavOpen(false); setIsDropdownOpen(false); }}
+                    >
+                      Eliminar Cuenta
+                    </Link>
+                  </li>
+                  <li><button className="dropdown-item text-danger" onClick={() => { handleLogout(); setIsNavOpen(false); setIsDropdownOpen(false); }}>Cerrar Sesión</button></li>
                 </ul>
               </li>
             </ul>

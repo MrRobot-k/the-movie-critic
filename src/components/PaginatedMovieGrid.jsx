@@ -129,11 +129,18 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
           url1 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${firstTmdbPage}`;
           url2 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${secondTmdbPage}`;
         }
+        console.log('Fetching URLs:', { url1, url2 });
         const [response1, response2] = await Promise.all([
           fetch(url1),
           fetch(url2)
         ]);
-        if (!response1.ok) throw new Error('Error al obtener las películas de TMDB.');
+        console.log('Response status:', { status1: response1.status, status2: response2.status });
+        if (!response1.ok) {
+          console.error('Error fetching from TMDB. Status:', response1.status);
+          const errorText = await response1.text();
+          console.error('Error response text:', errorText);
+          throw new Error('Error al obtener las películas de TMDB.');
+        }
         const data1 = await response1.json();
         const data2 = response2.ok ? await response2.json() : { results: [] };
         const combinedResults = [...data1.results, ...data2.results];
