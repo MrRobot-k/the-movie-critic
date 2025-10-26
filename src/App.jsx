@@ -33,9 +33,15 @@ export default function App() {
   const location = useLocation();
   useEffect(() => {
     const checkAuth = () => {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      const isAuth = !!(token && userId);
+      console.log('Auth check:', { isAuth, token: !!token, userId });
       setIsAuthenticated(!!localStorage.getItem('token'));
     };
-    checkAuth();
+    return () => {
+      checkAuth();
+    };
   }, [location]);
   const handleSearch = (e) => {
     e.preventDefault();

@@ -1,34 +1,55 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
-
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const [profilePicture, setProfilePicture] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [username, setUsername] = useState(localStorage.getItem('username'));
+  const [username, setUsername] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const userId = localStorage.getItem('userId');
-
   useEffect(() => {
     const fetchProfileData = async () => {
-      if (!userId) return;
+      if (!userId) {
+        console.log('No userId found, redirecting to login');
+        navigate('/login');
+        return;
+      }
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, redirecting to login');
+        navigate('/login');
+        return;
+      }
       try {
-        const response = await fetch(getApiUrl(`/api/users/${userId}`), { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(getApiUrl(`/api/users/${userId}`), { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Cache-Control': 'no-cache' // Forzar no usar caché
+          } 
+        });
         if (response.ok) {
           const userData = await response.json();
           setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
           setUsername(userData.username);
+          // Actualizar localStorage con datos frescos
+          localStorage.setItem('username', userData.username);
+        } else if (response.status === 401 || response.status === 403) {
+          console.log('Auth error, clearing data and redirecting');
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          localStorage.removeItem('username');
+          setIsAuthenticated(false);
+          navigate('/login');
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
       }
     };
     fetchProfileData();
-  }, [userId]);
-
+  }, [userId, location.pathname, navigate, setIsAuthenticated]); // Agregar location.pathname
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
@@ -36,32 +57,36 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     setIsAuthenticated(false);
     navigate('/login');
   };
-
   const handleUserSearch = (e) => {
     e.preventDefault();
-    if (userSearchQuery.trim()) {
-      navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
-    }
+    if (userSearchQuery.trim()) navigate(`/users/search?q=${encodeURIComponent(userSearchQuery)}`);
   };
-
+  // Validación adicional: si no hay username, no mostrar el header completo
+  if (!username && !userId) return null;
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
         <Link className="navbar-brand" to="/">
           <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
         </Link>
-        
-        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded={!isNavCollapsed} aria-label="Toggle navigation" onClick={() => setIsNavCollapsed(!isNavCollapsed)}>
+        <button 
+          className="navbar-toggler" 
+          type="button" 
+          data-bs-toggle="collapse" 
+          data-bs-target="#navbarContent" 
+          aria-controls="navbarContent" 
+          aria-expanded={!isNavCollapsed} 
+          aria-label="Toggle navigation" 
+          onClick={() => setIsNavCollapsed(!isNavCollapsed)}
+        >
           <span className="navbar-toggler-icon"></span>
         </button>
-
         <div className={`${isNavCollapsed ? 'collapse' : ''} navbar-collapse`} id="navbarContent">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item">
               <Link className="nav-link" to="/listas">Listas</Link>
             </li>
           </ul>
-
           <div className="d-flex flex-column flex-lg-row align-items-center gap-2">
             <form onSubmit={handleSearch} className="d-flex my-2 my-lg-0">
               <input
@@ -81,15 +106,25 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                 className="form-control bg-dark text-white"
               />
             </form>
-
             <ul className="navbar-nav">
               <li className="nav-item dropdown">
-                <a className="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <a 
+                  className="nav-link dropdown-toggle d-flex align-items-center" 
+                  href="#" 
+                  id="navbarDropdown" 
+                  role="button" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                >
                   <img
                     src={profilePicture || '/placeholder-profile.svg'}
                     alt="Profile"
                     className="rounded-circle me-2"
                     style={{ width: '30px', height: '30px', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/placeholder-profile.svg';
+                    }}
                   />
                   {username || 'Perfil'}
                 </a>
@@ -110,5 +145,4 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     </nav>
   );
 };
-
 export default AuthenticatedHeader;
