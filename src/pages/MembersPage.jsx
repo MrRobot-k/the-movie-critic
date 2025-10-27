@@ -38,7 +38,7 @@ const MembersPage = () => {
             >
               <div className="d-flex w-100 justify-content-start align-items-center">
                 <img
-                  src={user.profilePicture || placeholderProfile}
+                  src={user.profilePicture ? getApiUrl(user.profilePicture) : placeholderProfile}
                   alt={`${user.username}'s profile`}
                   className="rounded-circle me-3"
                   width="50"
