@@ -189,7 +189,7 @@ export default function App() {
         <Route path="/lista/:listId" element={<ViewListPage {...modalProps} />} />
         <Route path="/person/:personId/:role" element={<PersonDetailsPage {...modalProps} />} />
         <Route path="/profile" element={<ProfilePage {...modalProps} />} />
-        <Route path="/profile/:userId" element={<ProfilePage {...modalProps} />} />
+        <Route path="/profile/:username" element={<ProfilePage {...modalProps} />} />
         <Route path="/users/search" element={<UserSearchPage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/top-movies-editor" element={<TopMoviesEditor />} />

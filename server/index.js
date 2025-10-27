@@ -856,6 +856,23 @@ app.get('/api/users/search', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+app.get('/api/users/username/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({
+      where: { username },
+      attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error fetching user profile by username:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
