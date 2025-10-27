@@ -8,7 +8,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET;
 const multer = require('multer');
-const path = require('path');
+
 const { put } = require('@vercel/blob');
 // Global error handling for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -18,18 +18,10 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
+
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ✅ CONFIGURACIÓN CORRECTA PARA SUPABASE
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
@@ -140,10 +132,15 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
   try {
     const userId = req.user.id;
     if (!req.file) return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
+
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    user.profilePicture = `/uploads/${req.file.filename}`;
+
+    const { url } = await put(req.file.originalname, req.file.buffer, { access: 'public' });
+
+    user.profilePicture = url;
     await user.save();
+
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
   } catch (error) {
     console.error('Error updating profile picture:', error);
