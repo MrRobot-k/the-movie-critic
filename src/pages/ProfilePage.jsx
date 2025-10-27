@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X, Save, Edit } from 'lucide-react';
+import { User as UserIcon, Camera, Film, Heart, Eye, List as ListIcon, Star, Plus, Trash2, BarChart3, Bookmark, X, Save, Edit, Edit2 } from 'lucide-react';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import PaginatedMovieGrid from '../components/PaginatedMovieGrid';
 import RatingDistributionChart from '../components/RatingDistributionChart';
@@ -8,12 +8,10 @@ import { getApiUrl } from '../config/api';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
-
 const renderStars = (score) => {
   const fullStars = Math.floor(score);
   const halfStar = score % 1 >= 0.5;
   const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-
   return (
     <>
       {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={12} fill="currentColor" className="text-warning" />)}
@@ -22,7 +20,6 @@ const renderStars = (score) => {
     </>
   );
 };
-
 const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate }) => {
   const navigate = useNavigate();
   const { username: paramUsername } = useParams();
@@ -48,16 +45,15 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const [isProfilePictureModalOpen, setIsProfilePictureModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stats, setStats] = useState({ watched: 0, likes: 0, reviews: 0, watchlist: 0 });
+  const [editingReview, setEditingReview] = useState(null);
+  const [editReviewText, setEditReviewText] = useState('');
+  const [isEditingReview, setIsEditingReview] = useState(false);
   const loggedInUsername = localStorage.getItem('username');
   const isOwnProfile = !paramUsername || paramUsername === loggedInUsername;
   const usernameToFetch = isOwnProfile ? loggedInUsername : paramUsername;
-
   useEffect(() => {
-    if (location.hash === '#delete-account') {
-      setIsDeleteModalOpen(true);
-    }
+    if (location.hash === '#delete-account') setIsDeleteModalOpen(true);
   }, [location]);
-
   useEffect(() => {
     if (!isAuthenticated && isOwnProfile) {
       navigate('/login');
@@ -65,458 +61,550 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
     }
     fetchProfileData();
   }, [isAuthenticated, usernameToFetch, navigate, location]);
-    const fetchProfileData = async () => {
-      setLoading(true);
-      setError('');
-      const token = localStorage.getItem('token');
-  
-      if (!usernameToFetch) {
-        setError('Nombre de usuario inválido.');
-        setLoading(false);
+  const fetchProfileData = async () => {
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    if (!usernameToFetch) {
+      setError('Nombre de usuario inválido.');
+      setLoading(false);
+      return;
+    }
+    try {
+      const userRes = await fetch(getApiUrl(`/api/users/username/${usernameToFetch}`));
+      if (!userRes.ok) {
+        if (userRes.status === 401 || userRes.status === 403) handleAuthError();
+        else {
+          setError('Usuario no encontrado.');
+          setLoading(false);
+        }
         return;
       }
-  
-      try {
-        // 1. Fetch user data by username to get the user ID
-        const userRes = await fetch(getApiUrl(`/api/users/username/${usernameToFetch}`));
-        if (!userRes.ok) {
-          if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-          else {
-            setError('Usuario no encontrado.');
-            setLoading(false);
-          }
-          return;
-        }
-        const userData = await userRes.json();
-        setUserId(userData.id);
-        setUsername(userData.username);
-        setSlogan(userData.slogan || '');
-        setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
-  
-        const userId = userData.id; // Use this ID for subsequent requests
-  
-        // 2. Fetch all other data using the retrieved user ID
-        let allUserRatings = [];
-        const ratingsRes = await fetch(getApiUrl(`/api/users/${userId}/ratings-with-scores`), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (ratingsRes.ok) {
-          const data = await ratingsRes.json();
-          allUserRatings = data.ratings || [];
-          setUserRatings(allUserRatings);
-          setStats(prev => ({ ...prev, watched: allUserRatings?.length || 0 }));
-        } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-  
-        const likesStatsRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (likesStatsRes.ok) {
-          const data = await likesStatsRes.json();
-          setStats(prev => ({ ...prev, likes: data.likedItems?.length || 0 }));
-        }
-  
-        const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userId}/watchlist`), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (watchlistStatsRes.ok) {
-          const data = await watchlistStatsRes.json();
-          setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies?.length || 0 }));
-        }
-  
-        const listsRes = await fetch(getApiUrl(`/api/users/${userId}/lists`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (listsRes.ok) {
-          const data = await listsRes.json();
-          const lists = data.lists || [];
-          const detailedLists = await Promise.all(
-            lists.map(async (list) => {
-              try {
-                const listDetailRes = await fetch(getApiUrl(`/api/lists/${list.id}`), {
-                  headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (listDetailRes.ok) {
-                  const ld = await listDetailRes.json();
-                  const listData = ld.list || ld;
-                  const moviesFromDetail = listData.items || [];
-                  
-                  const moviesWithDetails = await Promise.all(
-                    moviesFromDetail.map(async (item) => {
-                      try {
-                        const movieRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-                        const movieDetail = await movieRes.json();
-                        return {
-                          ...movieDetail,
-                          id: item.mediaId,
-                          mediaType: item.mediaType,
-                          order: item.order,
-                          poster_path: movieDetail.poster_path
-                        };
-                      } catch (err) {
-                        return {
-                          id: item.mediaId,
-                          mediaType: item.mediaType,
-                          order: item.order,
-                          poster_path: null
-                        };
-                      }
-                    })
-                  );
-                  
-                  return {
-                    ...list,
-                    ...listData,
-                    movies: moviesWithDetails,
-                    movieCount: moviesWithDetails.length,
-                  };
-                }
-              } catch (err) { }
-              return {
-                ...list,
-                movies: list.items || [],
-                movieCount: list.items?.length || 0,
-              };
-            })
-          );
-          setUserLists(detailedLists);
-          setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
-        } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
-  
-        const likesRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const watchedRes = await fetch(getApiUrl(`/api/users/${userId}/watched`), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-  
-        let likedItems = [];
-        if (likesRes.ok) {
-          const likesData = await likesRes.json();
-          likedItems = likesData.likedItems || [];
-        }
-  
-        let watchedItems = [];
-        if (watchedRes.ok) {
-          const watchedData = await watchedRes.json();
-          watchedItems = watchedData.watchedMovies || [];
-        }
-  
-        const topMoviesRes = await fetch(getApiUrl(`/api/users/${userId}/top-movies`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (topMoviesRes.ok) {
-          const data = await topMoviesRes.json();
-          const detailedTopMoviesPromises = data.topMovies?.map(async (item) => {
+      const userData = await userRes.json();
+      setUserId(userData.id);
+      setUsername(userData.username);
+      setSlogan(userData.slogan || '');
+      setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
+      const userId = userData.id;
+      let allUserRatings = [];
+      const ratingsRes = await fetch(getApiUrl(`/api/users/${userId}/ratings-with-scores`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (ratingsRes.ok) {
+        const data = await ratingsRes.json();
+        allUserRatings = data.ratings || [];
+        setUserRatings(allUserRatings);
+        setStats(prev => ({ ...prev, watched: allUserRatings?.length || 0 }));
+      } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
+      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (likesStatsRes.ok) {
+        const data = await likesStatsRes.json();
+        setStats(prev => ({ ...prev, likes: data.likedItems?.length || 0 }));
+      }
+      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userId}/watchlist`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (watchlistStatsRes.ok) {
+        const data = await watchlistStatsRes.json();
+        setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies?.length || 0 }));
+      }
+      const listsRes = await fetch(getApiUrl(`/api/users/${userId}/lists`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (listsRes.ok) {
+        const data = await listsRes.json();
+        const lists = data.lists || [];
+        const detailedLists = await Promise.all(
+          lists.map(async (list) => {
             try {
-              const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-              const detail = await detailRes.json();
-              
-              const userRating = allUserRatings.find(r => r.mediaId === item.mediaId);
-              const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
-              const isWatched = watchedItems.some(w => w.mediaId === item.mediaId);
-  
-              return {
-                ...detail,
-                mediaType: item.mediaType,
-                order: item.order,
-                userScore: userRating ? userRating.score : null,
-                isLiked: isLiked,
-                isWatched: isWatched
-              };
-            } catch (error) { return null; }
-          }) || [];
-          const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
-          movies.sort((a, b) => a.order - b.order);
-          setTopMovies(movies);
-        } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
-  
-        const topDirectorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-directors`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (topDirectorsRes.ok) {
-          const data = await topDirectorsRes.json();
-          const detailedTopDirectorsPromises = data.topDirectors?.map(async (item) => {
-            try {
-              const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
-              const detail = await detailRes.json();
-              return { ...detail, order: item.order };
-            } catch (error) { return null; }
-          }) || [];
-          const directors = (await Promise.all(detailedTopDirectorsPromises)).filter(director => director !== null);
-          directors.sort((a, b) => a.order - b.order);
-          setTopDirectors(directors);
-        } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
-  
-        const topActorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-actors`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (topActorsRes.ok) {
-          const data = await topActorsRes.json();
-          const normalizedActors = data.map(actor => ({
-            ...actor,
-            id: actor.actorId,
-          }));
-          normalizedActors.sort((a, b) => a.order - b.order);
-          setTopActors(normalizedActors);
-        } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
-  
-        const reviewsRes = await fetch(getApiUrl(`/api/users/${userId}/reviews`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (reviewsRes.ok) {
-          const data = await reviewsRes.json();
-          const reviewsWithMovieDetails = await Promise.all(
-            (data.reviews || []).map(async (review) => {
-              try {
-                const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
-                const detail = await detailRes.json();
+              const listDetailRes = await fetch(getApiUrl(`/api/lists/${list.id}`), {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (listDetailRes.ok) {
+                const ld = await listDetailRes.json();
+                const listData = ld.list || ld;
+                const moviesFromDetail = listData.items || [];
+                const moviesWithDetails = await Promise.all(
+                  moviesFromDetail.map(async (item) => {
+                    try {
+                      const movieRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+                      const movieDetail = await movieRes.json();
+                      return {
+                        ...movieDetail,
+                        id: item.mediaId,
+                        mediaType: item.mediaType,
+                        order: item.order,
+                        poster_path: movieDetail.poster_path
+                      };
+                    } catch (err) {
+                      return {
+                        id: item.mediaId,
+                        mediaType: item.mediaType,
+                        order: item.order,
+                        poster_path: null
+                      };
+                    }
+                  })
+                );
                 return {
-                  ...review,
-                  movieDetails: detail,
-                  comment: review.comment ?? review.reviewText ?? review.content ?? '',
-                  hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
-                  rating: review.rating ?? review.score ?? null,
-                };
-              } catch (error) {
-                return {
-                  ...review,
-                  comment: review.comment ?? review.reviewText ?? review.content ?? '',
-                  hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
-                  rating: review.rating ?? review.score ?? null,
+                  ...list,
+                  ...listData,
+                  movies: moviesWithDetails,
+                  movieCount: moviesWithDetails.length,
                 };
               }
-            })
-          );
-          setReviews(reviewsWithMovieDetails);
-        } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
-      } catch (err) {
-        setError('Error al cargar los datos del perfil.');
-      } finally {
-        setLoading(false);
+            } catch (err) { }
+            return {
+              ...list,
+              movies: list.items || [],
+              movieCount: list.items?.length || 0,
+            };
+          })
+        );
+        setUserLists(detailedLists);
+        setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
+      } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
+      const likesRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const watchedRes = await fetch(getApiUrl(`/api/users/${userId}/watched`), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      let likedItems = [];
+      if (likesRes.ok) {
+        const likesData = await likesRes.json();
+        likedItems = likesData.likedItems || [];
       }
-    };
-    const handleAuthError = () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('username');
-      navigate('/login');
-      setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
-    };
-    const handleFileChange = (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        setSelectedFile(file);
-        setProfilePicturePreview(URL.createObjectURL(file));
-      } else {
-        setSelectedFile(null);
+      let watchedItems = [];
+      if (watchedRes.ok) {
+        const watchedData = await watchedRes.json();
+        watchedItems = watchedData.watchedMovies || [];
+      }
+      const topMoviesRes = await fetch(getApiUrl(`/api/users/${userId}/top-movies`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (topMoviesRes.ok) {
+        const data = await topMoviesRes.json();
+        const detailedTopMoviesPromises = data.topMovies?.map(async (item) => {
+          try {
+            const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+            const detail = await detailRes.json();
+            const userRating = allUserRatings.find(r => r.mediaId === item.mediaId);
+            const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
+            const isWatched = watchedItems.some(w => w.mediaId === item.mediaId);
+            return {
+              ...detail,
+              mediaType: item.mediaType,
+              order: item.order,
+              userScore: userRating ? userRating.score : null,
+              isLiked: isLiked,
+              isWatched: isWatched
+            };
+          } catch (error) { return null; }
+        }) || [];
+        const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
+        movies.sort((a, b) => a.order - b.order);
+        setTopMovies(movies);
+      } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
+      const topDirectorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-directors`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (topDirectorsRes.ok) {
+        const data = await topDirectorsRes.json();
+        const detailedTopDirectorsPromises = data.topDirectors?.map(async (item) => {
+          try {
+            const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
+            const detail = await detailRes.json();
+            return { ...detail, order: item.order };
+          } catch (error) { return null; }
+        }) || [];
+        const directors = (await Promise.all(detailedTopDirectorsPromises)).filter(director => director !== null);
+        directors.sort((a, b) => a.order - b.order);
+        setTopDirectors(directors);
+      } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
+      const topActorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-actors`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (topActorsRes.ok) {
+        const data = await topActorsRes.json();
+        const normalizedActors = data.map(actor => ({
+          ...actor,
+          id: actor.actorId,
+        }));
+        normalizedActors.sort((a, b) => a.order - b.order);
+        setTopActors(normalizedActors);
+      } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
+      const reviewsRes = await fetch(getApiUrl(`/api/users/${userId}/reviews`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (reviewsRes.ok) {
+        const data = await reviewsRes.json();
+        const reviewsWithMovieDetails = await Promise.all(
+          (data.reviews || []).map(async (review) => {
+            try {
+              const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
+              const detail = await detailRes.json();
+              return {
+                ...review,
+                movieDetails: detail,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
+            } catch (error) {
+              return {
+                ...review,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
+            }
+          })
+        );
+        setReviews(reviewsWithMovieDetails);
+      } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
+    } catch (err) {
+      setError('Error al cargar los datos del perfil.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const refreshReviews = async () => {
+    const token = localStorage.getItem('token');
+    if (!userId || !token) return;
+    try {
+      const reviewsRes = await fetch(getApiUrl(`/api/users/${userId}/reviews`), {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (reviewsRes.ok) {
+        const data = await reviewsRes.json();
+        const reviewsWithMovieDetails = await Promise.all(
+          (data.reviews || []).map(async (review) => {
+            try {
+              const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
+              const detail = await detailRes.json();
+              return {
+                ...review,
+                movieDetails: detail,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
+            } catch (error) {
+              return {
+                ...review,
+                comment: review.comment ?? review.reviewText ?? review.content ?? '',
+                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
+                rating: review.rating ?? review.score ?? null,
+              };
+            }
+          })
+        );
+        setReviews(reviewsWithMovieDetails);
+      }
+    } catch (error) {
+      console.error('Error refreshing reviews:', error);
+    }
+  };
+  const handleAuthError = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    navigate('/login');
+    setError('Tu sesión ha expirado o no es válida. Por favor, inicia sesión de nuevo.');
+  };
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setProfilePicturePreview(URL.createObjectURL(file));
+    } else {
+      setSelectedFile(null);
+      setProfilePicturePreview(null);
+    }
+  };
+  const handleSaveProfilePicture = async () => {
+    if (!selectedFile) {
+      alert('Por favor, selecciona una imagen primero.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('profilePicture', selectedFile);
+    try {
+      const response = await fetch(getApiUrl(`api/users/profile-picture`), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProfilePicture(getApiUrl(data.profilePicture));
         setProfilePicturePreview(null);
+        setSelectedFile(null);
+        alert('Foto de perfil actualizada exitosamente.');
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al actualizar la foto de perfil.');
       }
-    };
-    const handleSaveProfilePicture = async () => {
-      if (!selectedFile) {
-        alert('Por favor, selecciona una imagen primero.');
-        return;
+    } catch (err) {
+      setError('Error de red al actualizar la foto de perfil.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDeleteProfilePicture = async () => {
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/users/profile-picture`), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ profilePicture: null })
+      });
+      if (response.ok) {
+        setProfilePicture(null);
+        setProfilePicturePreview(null);
+        setSelectedFile(null);
+        alert('Foto de perfil eliminada exitosamente.');
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al eliminar la foto de perfil.');
       }
-      setLoading(true);
-      setError('');
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('profilePicture', selectedFile);
-      try {
-        const response = await fetch(getApiUrl(`api/users/profile-picture`), {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setProfilePicture(getApiUrl(data.profilePicture));
-          setProfilePicturePreview(null);
-          setSelectedFile(null);
-          alert('Foto de perfil actualizada exitosamente.');
-        } else if (response.status === 401 || response.status === 403) handleAuthError();
-        else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Error al actualizar la foto de perfil.');
+    } catch (err) {
+      setError('Error de red al eliminar la foto de perfil.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleSaveProfile = async () => {
+    if (!newUsername.trim()) {
+      alert('El nombre de usuario no puede estar vacío.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/users/profile`), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: newUsername, slogan: newSlogan }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsername(data.user.username);
+        setSlogan(data.user.slogan);
+        setIsEditingUsername(false);
+        localStorage.setItem('username', data.user.username);
+      } else if (response.status === 401 || response.status === 403) handleAuthError();
+      else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al actualizar el perfil.');
+      }
+    } catch (err) {
+      setError('Error de red al actualizar el perfil.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleRemoveTopMovie = async (mediaId) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/users/top-movies/${mediaId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (err) {
-        setError('Error de red al actualizar la foto de perfil.');
-      } finally {
-        setLoading(false);
+      });
+      if (response.ok) {
+        setTopMovies(topMovies.filter(movie => movie.id !== mediaId));
+        alert('Película eliminada del Top 10 exitosamente.');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Error al eliminar la película.');
       }
-    };
-    const handleDeleteProfilePicture = async () => {
-      setLoading(true);
-      setError('');
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(getApiUrl(`/api/users/profile-picture`),
-         {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ profilePicture: null })
-        });
-        if (response.ok) {
-          setProfilePicture(null);
-          setProfilePicturePreview(null);
-          setSelectedFile(null);
-          alert('Foto de perfil eliminada exitosamente.');
-        } else if (response.status === 401 || response.status === 403) handleAuthError();
-        else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Error al eliminar la foto de perfil.');
+    } catch (err) {
+      setError('Error de red al eliminar la película.');
+    }
+  };
+  const handleRemoveTopDirector = async (personId) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/users/top-directors/${personId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (err) {
-        setError('Error de red al eliminar la foto de perfil.');
-      } finally {
-        setLoading(false);
+      });
+      if (response.ok) {
+        setTopDirectors(topDirectors.filter(director => director.id !== personId));
+        alert('Director eliminado del Top 10 exitosamente.');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Error al eliminar el director.');
       }
-    };
-    const handleSaveProfile = async () => {
-      if (!newUsername.trim()) {
-        alert('El nombre de usuario no puede estar vacío.');
-        return;
-      }
-      setLoading(true);
-      setError('');
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(getApiUrl(`/api/users/profile`),
-         {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ username: newUsername, slogan: newSlogan }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUsername(data.user.username);
-          setSlogan(data.user.slogan);
-          setIsEditingUsername(false);
-          localStorage.setItem('username', data.user.username);
-        } else if (response.status === 401 || response.status === 403) handleAuthError();
-        else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Error al actualizar el perfil.');
+    } catch (err) {
+      setError('Error de red al eliminar el director.');
+    }
+  };
+  const handleRemoveTopActor = async (actorId) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/users/top-actors/${actorId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (err) {
-        setError('Error de red al actualizar el perfil.');
-      } finally {
-        setLoading(false);
+      });
+      if (response.ok) {
+        setTopActors(topActors.filter(actor => actor.id !== actorId));
+        alert('Actor eliminado del Top 10 exitosamente.');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Error al eliminar el actor.');
       }
-    };
-    const handleRemoveTopMovie = async (mediaId) => {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(getApiUrl(`/api/users/top-movies/${mediaId}`), {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          setTopMovies(topMovies.filter(movie => movie.id !== mediaId));
-          alert('Película eliminada del Top 10 exitosamente.');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Error al eliminar la película.');
-        }
-      } catch (err) {
-        setError('Error de red al eliminar la película.');
-      }
-    };
-    const handleRemoveTopDirector = async (personId) => {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(getApiUrl(`/api/users/top-directors/${personId}`), {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          setTopDirectors(topDirectors.filter(director => director.id !== personId));
-          alert('Director eliminado del Top 10 exitosamente.');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Error al eliminar el director.');
-        }
-      } catch (err) {
-        setError('Error de red al eliminar el director.');
-      }
-    };
-    const handleRemoveTopActor = async (actorId) => {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(getApiUrl(`/api/users/top-actors/${actorId}`), {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          setTopActors(topActors.filter(actor => actor.id !== actorId));
-          alert('Actor eliminado del Top 10 exitosamente.');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Error al eliminar el actor.');
-        }
-      } catch (err) {
-        setError('Error de red al eliminar el actor.');
-      }
-    };
-  
-    const handleDeleteAccount = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
+    } catch (err) {
+      setError('Error de red al eliminar el actor.');
+    }
+  };
+  const handleEditReview = (review) => {
+    setEditingReview(review);
+    setEditReviewText(review.comment);
+    setIsEditingReview(true);
+  };
+  const handleSaveEditReview = async () => {
+    if (!editReviewText.trim()) {
+      alert('El review no puede estar vacío.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/media/${editingReview.mediaId}/review`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mediaType: editingReview.mediaType,
+          reviewText: editReviewText.trim()
+        }),
+      });
+      if (response.ok) {
+        setReviews(reviews.map(review => 
+          review.id === editingReview.id 
+            ? { ...review, comment: editReviewText.trim() }
+            : review
+        ));
+        setIsEditingReview(false);
+        setEditingReview(null);
+        setEditReviewText('');
+        alert('Review actualizado exitosamente.');
+      } else if (response.status === 401 || response.status === 403) {
         handleAuthError();
-        return;
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al actualizar el review.');
       }
-  
-      try {
-        const response = await fetch(getApiUrl(`/api/users/${userId}`), {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-  
-        if (response.ok) {
-          alert('Tu cuenta ha sido eliminada exitosamente.');
-          localStorage.removeItem('token');
-          localStorage.removeItem('userId');
-          localStorage.removeItem('username');
-          navigate('/register');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Error al eliminar la cuenta.');
-        }
-      } catch (err) {
-        setError('Error de red al eliminar la cuenta.');
-      } finally {
-        setIsDeleteModalOpen(false);
+    } catch (err) {
+      setError('Error de red al actualizar el review.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDeleteReview = async (review) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este review?')) return;
+    setLoading(true);
+    setError('');
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(getApiUrl(`/api/media/${review.mediaId}/review`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mediaType: review.mediaType
+        }),
+      });
+      if (response.ok) {
+        setReviews(reviews.filter(r => r.id !== review.id));
+        alert('Review eliminado exitosamente.');
+      } else if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al eliminar el review.');
       }
-    };
-
+    } catch (err) {
+      setError('Error de red al eliminar el review.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleCancelEditReview = () => {
+    setIsEditingReview(false);
+    setEditingReview(null);
+    setEditReviewText('');
+  };
+  const handleDeleteAccount = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      handleAuthError();
+      return;
+    }
+    try {
+      const response = await fetch(getApiUrl(`/api/users/delete`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        alert('Tu cuenta ha sido eliminada exitosamente.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username');
+        navigate('/register');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error al eliminar la cuenta.');
+      }
+    } catch (err) {
+      setError('Error de red al eliminar la cuenta.');
+    } finally {
+      setIsDeleteModalOpen(false);
+    }
+  };
   if (loading) return <div className="container mt-5 text-center">Cargando perfil...</div>;
   if (error) return <div className="container mt-5 alert alert-danger">{error}</div>;
   return (
     <div className="container my-5">
-      <div className="row">
-        {/* --- Columna izquierda --- */}
+      <div className="row"> {/* Columna izquierda */}
         <div className="col-md-4 mb-5">
-          <div className="sticky-top" style={{ top: '20px', zIndex: 999 }}>
-            {/* --- Info usuario --- */}
+          <div className="sticky-top" style={{ top: '20px', zIndex: 999 }}> {/* Info usuario */}
             <div className="text-center mb-4">
               <div className="position-relative d-inline-block mb-3">
                 <img 
@@ -589,8 +677,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   {slogan && <p className="text-muted mt-2">{slogan}</p>}
                 </div>
               )}
-            </div>
-            {/* --- Stats principales --- */}
+            </div> {/* Stats principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <div className="row text-center">
                 <div className="col-3">
@@ -622,17 +709,15 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                   </div>
                 </div>
               </div>
-            </div>
-            {/* --- Gráfico distribución --- */}
+            </div> {/* Gráfico distribución */}
             <div className="p-4 rounded" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
               <h5 className="text-light mb-3">DISTRIBUCIÓN</h5>
               <RatingDistributionChart ratings={userRatings} />
             </div>
           </div>
-        </div>
-        {/* --- Columna derecha --- */}
+        </div> {/* Columna derecha */}
         <div className="col-md-8">
-          {/* --- Top 10 películas --- */}
+          {/* Top 10 películas */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Películas</h2>
             {isOwnProfile && (
@@ -701,7 +786,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-muted mb-3">Aún no has agregado películas a tu Top 10.</p>
+                <p className="text-muted mb-3">
+                  {isOwnProfile 
+                    ? 'Aún no has agregado películas a tu Top 10.' 
+                    : `${username} aún no ha agregado películas a su Top 10.`}
+                </p>
                 {isOwnProfile && (
                   <button 
                     className="btn btn-primary"
@@ -713,8 +802,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 )}
               </div>
             )}
-          </div>
-          {/* --- Top 10 directores --- */}
+          </div> {/* Top 10 directores */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Directores</h2>
             {isOwnProfile && (
@@ -769,7 +857,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-muted mb-3">Aún no has agregado directores a tu Top 10.</p>
+                <p className="text-muted mb-3">
+                  {isOwnProfile 
+                    ? 'Aún no has agregado directores a tu Top 10.' 
+                    : `${username} aún no ha agregado directores a su Top 10.`}
+                </p>
                 {isOwnProfile && (
                   <button 
                     className="btn btn-primary"
@@ -781,8 +873,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 )}
               </div>
             )}
-          </div>
-          {/* --- Top 10 actores --- */}
+          </div> {/* Top 10 actores */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="fw-bold mb-0 text-light">Top 10 Mejores Actores/Actrices</h2>
             {isOwnProfile && (
@@ -840,7 +931,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-muted mb-3">Aún no has agregado actores/actrices a tu Top 10.</p>
+                <p className="text-muted mb-3">
+                  {isOwnProfile 
+                    ? 'Aún no has agregado actores/actrices a tu Top 10.' 
+                    : `${username} aún no ha agregado actores/actrices a su Top 10.`}
+                </p>
                 {isOwnProfile && (
                   <button 
                     className="btn btn-primary"
@@ -852,8 +947,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 )}
               </div>
             )}
-          </div>
-          {/* --- Reviews --- */}
+          </div> {/* Reviews */}
           <h2 className="fw-bold mb-4 text-light">Reviews</h2>
           <div className="mb-5">
             {reviews.length > 0 ? (
@@ -861,7 +955,17 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                 <div key={review.id} className="p-4 rounded mb-4" style={{ backgroundColor: "#1e2328", border: "1px solid #454d5d" }}>
                   <div className="row">
                     <div className="col-md-2">
-                      <div className="poster-container">
+                      <div 
+                        className="poster-container"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          const userRating = userRatings.find(rating => 
+                            rating.mediaId === review.mediaId && rating.mediaType === review.mediaType
+                          );
+                          const userScore = userRating ? userRating.score : null;
+                          getMovieDetails(review.mediaId, review.mediaType, userScore);
+                        }}
+                      >
                         <img
                           src={review.movieDetails?.poster_path ? `${IMAGE_BASE_URL}/w342${review.movieDetails.poster_path}` : "/placeholder-poster.svg"}
                           alt={review.movieDetails?.title || review.movieDetails?.name}
@@ -871,7 +975,19 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                     </div>
                     <div className="col-md-10">
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="text-light mb-0">{review.movieDetails?.title || review.movieDetails?.name}</h5>
+                        <h5 
+                          className="text-light mb-0"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => {
+                            const userRating = userRatings.find(rating => 
+                              rating.mediaId === review.mediaId && rating.mediaType === review.mediaType
+                            );
+                            const userScore = userRating ? userRating.score : null;
+                            getMovieDetails(review.mediaId, review.mediaType, userScore);
+                          }}
+                        >
+                          {review.movieDetails?.title || review.movieDetails?.name}
+                        </h5>
                         <div className="d-flex align-items-center gap-2">
                           <div className="d-flex align-items-center">
                             <Star size={16} className="text-warning me-1" />
@@ -880,21 +996,71 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                           {review.hasLiked && (
                             <Heart size={16} className="text-danger" fill="currentColor" />
                           )}
+                          {isOwnProfile && (
+                            <div className="d-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-warning"
+                                onClick={() => handleEditReview(review)}
+                                title="Editar review"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDeleteReview(review)}
+                                title="Eliminar review"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <p className="text-light">{review.comment}</p>
-                      <small className="text-muted">{new Date(review.createdAt).toLocaleDateString("es-MX")}</small>
+                      {isEditingReview && editingReview?.id === review.id ? (
+                        <div className="mb-3">
+                          <textarea
+                            className="form-control"
+                            value={editReviewText}
+                            onChange={(e) => setEditReviewText(e.target.value)}
+                            rows="3"
+                            placeholder="Escribe tu review..."
+                          />
+                          <div className="d-flex gap-2 mt-2">
+                            <button 
+                              className="btn btn-sm btn-primary"
+                              onClick={handleSaveEditReview}
+                            >
+                              Guardar
+                            </button>
+                            <button 
+                              className="btn btn-sm btn-secondary"
+                              onClick={handleCancelEditReview}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-light">{review.comment}</p>
+                      )}
+                      
+                      <small className="text-muted">
+                        {new Date(review.createdAt).toLocaleDateString("es-MX")}
+                      </small>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-4">
-                <p className="text-muted">Aún no has escrito ninguna review.</p>
+                <p className="text-muted">
+                  {isOwnProfile 
+                    ? 'Aún no has escrito ninguna review.' 
+                    : `${username} aún no ha escrito ninguna review.`}
+                </p>
               </div>
             )}
-          </div>
-          {/* --- Listas --- */}
+          </div> {/* Listas */}
           <h2 className="fw-bold mb-4 text-light">Mis Listas</h2>
           <div className="mb-5">
             {userLists.length > 0 ? (
@@ -919,29 +1085,29 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                         </small>
                       </div>
                       {list.movies && list.movies.length > 0 && (
-                      <div className="d-flex gap-1 mb-2 overflow-hidden" style={{ height: '60px' }}>
-                      {list.movies.slice(0, 3).map((movie, index) => (
-                      <div key={movie.id} className="position-relative" style={{ height: '100%', width: 'auto' }}>
-                      <img
-                      src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : "/placeholder-poster.svg"}
-                      alt={movie.title}
-                      className="rounded"
-                      style={{ height: '100%', width: 'auto' }}
-                      />
-                      {list.isNumbered && (
-                      <div className="position-absolute top-0 start-0 bg-dark text-white px-1 py-0 rounded" style={{ fontSize: '10px', fontWeight: 'bold' }}>
-                      #{movie.order || index + 1}
-                      </div>
-                      )}
-                      </div>
-                      ))}
-                      {list.movies.length > 3 && (
-                      <div className="d-flex align-items-center justify-content-center rounded bg-dark" 
-                      style={{ height: '100%', width: '40px' }}>
-                      <small className="text-muted">+{list.movies.length - 3}</small>
-                      </div>
-                      )}
-                      </div>
+                        <div className="d-flex gap-1 mb-2 overflow-hidden" style={{ height: '60px' }}>
+                          {list.movies.slice(0, 3).map((movie, index) => (
+                            <div key={movie.id} className="position-relative" style={{ height: '100%', width: 'auto' }}>
+                              <img
+                                src={movie.poster_path ? `${IMAGE_BASE_URL}/w92${movie.poster_path}` : "/placeholder-poster.svg"}
+                                alt={movie.title}
+                                className="rounded"
+                                style={{ height: '100%', width: 'auto' }}
+                              />
+                              {list.isNumbered && (
+                                <div className="position-absolute top-0 start-0 bg-dark text-white px-1 py-0 rounded" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                                  #{movie.order || index + 1}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {list.movies.length > 3 && (
+                            <div className="d-flex align-items-center justify-content-center rounded bg-dark" 
+                              style={{ height: '100%', width: '40px' }}>
+                              <small className="text-muted">+{list.movies.length - 3}</small>
+                            </div>
+                          )}
+                        </div>
                       )}
                       <div className="d-flex justify-content-between align-items-center">
                         <small className="text-muted">
@@ -954,11 +1120,15 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-muted">Aún no has creado ninguna lista.</p>
+                <p className="text-muted">
+                  {isOwnProfile 
+                    ? 'Aún no has creado ninguna lista.' 
+                    : `${username} aún no ha creado ninguna lista.`}
+                </p>
                 {isOwnProfile && (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => navigate('/list-creator')}
+                    onClick={() => navigate('/crear-lista')}
                   >
                     <Plus size={16} className="me-1" />
                     Crear Mi Primera Lista
@@ -968,12 +1138,14 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             )}
           </div>
         </div>
-      </div>
-      {/* Modal de detalles de película */}
+      </div> {/* Modal de detalles de película */}
       {selectedMovie && (
         <MovieDetailsModal
           movie={selectedMovie}
-          onClose={onCloseDetails}
+          onClose={() => {
+            onCloseDetails();
+            refreshReviews();
+          }}
           onRateMovie={onRateMovie}
           onToggleLike={onToggleLike}
           onToggleWatchlist={onToggleWatchlist}
@@ -981,8 +1153,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           currentIndex={currentIndex}
           onNavigate={onNavigate}
         />
-      )}
-      {/* Modal para cambiar foto de perfil */}
+      )} {/* Modal para cambiar foto de perfil */}
       {isProfilePictureModalOpen && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1023,8 +1194,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             </div>
           </div>
         </div>
-      )}
-
+      )}{/* Modal para eliminar cuenta */}
       {isDeleteModalOpen && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
           <div className="modal-dialog modal-dialog-centered">
