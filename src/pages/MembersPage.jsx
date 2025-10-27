@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import placeholderProfile from '/placeholder-profile.svg';
-
 const MembersPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -19,10 +17,8 @@ const MembersPage = () => {
         setLoading(false);
       }
     };
-
     fetchUsers();
   }, []);
-
   return (
     <div className="container mt-4">
       <h1 className="mb-4">Miembros</h1>
@@ -56,5 +52,4 @@ const MembersPage = () => {
     </div>
   );
 };
-
 export default MembersPage;

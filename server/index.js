@@ -45,7 +45,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     acquire: 30000,
     idle: 10000
   },
-  logging: console.log // Cambia a console.log si quieres ver los queries
+  logging: console.log 
 });
 const User = require('./models/user.model')(sequelize);
 const Rating = require('./models/rating.model')(sequelize);
@@ -76,7 +76,6 @@ User.hasMany(List, { foreignKey: 'userId' });
 List.belongsTo(User, { foreignKey: 'userId' });
 List.hasMany(ListItem, { foreignKey: 'listId', as: 'items' });
 ListItem.belongsTo(List, { foreignKey: 'listId' });
-// ✅ FUNCIÓN DE CONEXIÓN MEJORADA
 const testDbConnection = async () => {
   try {
     console.log('🔄 Intentando conectar a Supabase...');
@@ -166,24 +165,18 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // Ruta para eliminar un usuario
 app.delete('/api/users/delete', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
-
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     await user.destroy(); // Esto eliminará al usuario y sus datos asociados gracias a ON DELETE CASCADE
-
     res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
   } catch (error) {
     console.error('Error al eliminar el usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
-
 app.post('/api/media/:mediaId/rate', authenticateToken, async (req, res) => {
   try {
     const { mediaId } = req.params;
@@ -863,16 +856,13 @@ app.get('/api/users/username/:username', async (req, res) => {
       where: { username },
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
     });
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     res.status(200).json(user);
   } catch (error) {
     console.error('Error fetching user profile by username:', error);
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
