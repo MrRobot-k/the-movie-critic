@@ -138,6 +138,11 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                 Listas
               </Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/members" onClick={() => setIsNavOpen(false)}>
+                Miembros
+              </Link>
+            </li>
           </ul>
 
           <div className="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 ms-auto">

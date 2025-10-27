@@ -824,6 +824,19 @@ app.delete('/api/users/top-actors/:actorId', authenticateToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'profilePicture', 'slogan'],
+      order: [['createdAt', 'DESC']],
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/users/search', async (req, res) => {
   try {
     const { q } = req.query;

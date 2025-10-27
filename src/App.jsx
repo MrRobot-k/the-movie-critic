@@ -21,6 +21,7 @@ import TopMoviesEditor from './pages/TopMoviesEditor';
 import TopDirectorsEditor from './pages/TopDirectorsEditor';
 import TopActorsEditor from './pages/TopActorsEditor';
 import UserSearchPage from './pages/UserSearchPage';
+import MembersPage from './pages/MembersPage';
 import { getApiUrl } from "./config/api";
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 export default function App() {
@@ -190,6 +191,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage {...modalProps} />} />
         <Route path="/profile/:userId" element={<ProfilePage {...modalProps} />} />
         <Route path="/users/search" element={<UserSearchPage />} />
+        <Route path="/members" element={<MembersPage />} />
         <Route path="/top-movies-editor" element={<TopMoviesEditor />} />
         <Route path="/top-directors-editor" element={<TopDirectorsEditor />} />
         <Route path="/top-actors-editor" element={<TopActorsEditor />} />
