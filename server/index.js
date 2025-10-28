@@ -9,13 +9,9 @@ const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET;
 const multer = require('multer');
 const path = require('path');
-
-
-// Global error handling for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
-// Global error handling for uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
@@ -28,11 +24,9 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-// ✅ CONFIGURACIÓN CORRECTA PARA SUPABASE
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   dialectOptions: {
@@ -101,10 +95,8 @@ const testDbConnection = async () => {
     console.error('3. Que Supabase esté accesible');
     process.exit(1);
   }
-};
-// Iniciar conexión
+}; // Iniciar conexión
 testDbConnection();
-// Middleware para autenticar el token JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -167,7 +159,6 @@ app.put('/api/users/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// Ruta para eliminar un usuario
 app.delete('/api/users/delete', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
