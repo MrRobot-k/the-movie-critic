@@ -859,7 +859,19 @@ app.get('/api/users/username/:username', async (req, res) => {
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
     });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    res.status(200).json(user);
+
+    const reviewsCount = await Review.count({ where: { userId: user.id } });
+
+    const userProfile = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      profilePicture: user.profilePicture,
+      slogan: user.slogan,
+      reviewsCount: reviewsCount
+    };
+
+    res.status(200).json(userProfile);
   } catch (error) {
     console.error('Error fetching user profile by username:', error);
     res.status(500).json({ error: error.message });

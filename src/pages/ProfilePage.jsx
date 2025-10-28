@@ -83,9 +83,11 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       const userData = await userRes.json();
       setUserId(userData.id);
       setUsername(userData.username);
-      setSlogan(userData.slogan || '');
-      setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
-      const userId = userData.id;
+            setSlogan(userData.slogan || '');
+            setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
+            setStats(prev => ({ ...prev, reviews: userData.reviewsCount || 0 }));
+      
+            const userId = userData.id;
       let allUserRatings = [];
       const ratingsRes = await fetch(getApiUrl(`/api/users/${userId}/ratings-with-scores`), {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -164,7 +166,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           })
         );
         setUserLists(detailedLists);
-        setStats(prev => ({ ...prev, reviews: detailedLists.length || 0 }));
       } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
       const likesRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -679,34 +680,31 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
               )}
             </div> {/* Stats principales */}
             <div className="p-4 rounded mb-4" style={{ backgroundColor: '#1e2328', border: '1px solid #454d5d' }}>
-              <div className="row text-center">
-                <div className="col-3">
-                  <div className="d-flex flex-column align-items-center">
-                    <Film size={20} className="text-success mb-1" />
-                    <h5 className="fw-bold mb-0 text-light">{stats.watched}</h5>
-                    <small className="text-muted">DIARY</small>
-                  </div>
+              <div className="d-flex justify-content-between text-center">
+                <div className="d-flex flex-column align-items-center">
+                  <Film size={20} className="text-success mb-1" />
+                  <h5 className="fw-bold mb-0 text-light">{stats.watched}</h5>
+                  <small className="text-muted">DIARY</small>
                 </div>
-                <div className="col-3">
-                  <div className="d-flex flex-column align-items-center">
-                    <Heart size={20} className="text-danger mb-1" />
-                    <h5 className="fw-bold mb-0 text-light">{stats.likes}</h5>
-                    <small className="text-muted">LIKES</small>
-                  </div>
+                <div className="d-flex flex-column align-items-center">
+                  <Heart size={20} className="text-danger mb-1" />
+                  <h5 className="fw-bold mb-0 text-light">{stats.likes}</h5>
+                  <small className="text-muted">LIKES</small>
                 </div>
-                <div className="col-3">
-                  <div className="d-flex flex-column align-items-center">
-                    <Bookmark size={20} className="text-primary mb-1" />
-                    <h5 className="fw-bold mb-0 text-light">{stats.watchlist}</h5>
-                    <small className="text-muted">WATCHLIST</small>
-                  </div>
+                <div className="d-flex flex-column align-items-center">
+                  <Bookmark size={20} className="text-primary mb-1" />
+                  <h5 className="fw-bold mb-0 text-light">{stats.watchlist}</h5>
+                  <small className="text-muted">WATCHLIST</small>
                 </div>
-                <div className="col-3">
-                  <div className="d-flex flex-column align-items-center">
-                    <ListIcon size={20} className="text-info mb-1" />
-                    <h5 className="fw-bold mb-0 text-light">{userLists.length}</h5>
-                    <small className="text-muted">LISTS</small>
-                  </div>
+                <div className="d-flex flex-column align-items-center">
+                  <Edit2 size={20} className="text-warning mb-1" />
+                  <h5 className="fw-bold mb-0 text-light">{stats.reviews}</h5>
+                  <small className="text-muted">REVIEWS</small>
+                </div>
+                <div className="d-flex flex-column align-items-center">
+                  <ListIcon size={20} className="text-info mb-1" />
+                  <h5 className="fw-bold mb-0 text-light">{userLists.length}</h5>
+                  <small className="text-muted">LISTS</small>
                 </div>
               </div>
             </div> {/* Gráfico distribución */}
