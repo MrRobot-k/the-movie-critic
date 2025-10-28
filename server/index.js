@@ -84,7 +84,7 @@ const testDbConnection = async () => {
     console.log('DATABASE_URL presente:', !!process.env.DATABASE_URL);
     console.log('JWT_SECRET presente:', !!process.env.JWT_SECRET);
     await sequelize.authenticate();
-    console.log('✅ Conexión a Supabase establecida exitosamente.');
+    console.log('✅ Base de datos conectada exitosamente.');
     await sequelize.sync({ alter: true });
     console.log('✅ Todos los modelos sincronizados correctamente.');
     app.listen(port, () => {
