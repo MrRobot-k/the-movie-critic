@@ -346,10 +346,10 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       });
       if (response.ok) {
         const data = await response.json();
-        setProfilePicture(getApiUrl(data.profilePicture));
+        setProfilePicture(data.profilePicture);
         setProfilePicturePreview(null);
         setSelectedFile(null);
-        localStorage.setItem('profilePicture', getApiUrl(data.profilePicture));
+        localStorage.setItem('profilePicture', data.profilePicture);
         alert('Foto de perfil actualizada exitosamente.');
       } else if (response.status === 401 || response.status === 403) handleAuthError();
       else {
