@@ -2,24 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
-
 const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
-  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(localStorage.getItem('username') || '');
   const [isLoading, setIsLoading] = useState(true);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); // ← NUEVO estado para dropdown
   const navigate = useNavigate();
   const location = useLocation();
   const userId = localStorage.getItem('userId');
-
-  // Cerrar el menú cuando cambia la ruta
   useEffect(() => {
     setIsNavOpen(false);
     setIsDropdownOpen(false);
   }, [location.pathname]);
-
   useEffect(() => {
     const fetchProfileData = async () => {
       setIsLoading(true);
@@ -43,36 +39,47 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         });
         if (response.ok) {
           const userData = await response.json();
-          setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
+          const newProfilePicture = userData.profilePicture ? getApiUrl(userData.profilePicture) : null;
+
+          setProfilePicture(newProfilePicture);
           setUsername(userData.username);
+
           localStorage.setItem('username', userData.username);
+          if (newProfilePicture) {
+            localStorage.setItem('profilePicture', newProfilePicture);
+          } else {
+            localStorage.removeItem('profilePicture');
+          }
         } else if (response.status === 401 || response.status === 403) {
           console.error("Authorization error:", response);
           localStorage.removeItem('token');
           localStorage.removeItem('userId');
           localStorage.removeItem('username');
+          localStorage.removeItem('profilePicture');
           setIsAuthenticated(false);
           navigate('/login');
-        } else {
-          console.error("Error fetching profile data:", response);
-        }
+        } else console.error("Error fetching profile data:", response);
       } catch (error) {
         console.error('Error fetching profile data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchProfileData();
-  }, [userId, location.pathname, navigate, setIsAuthenticated]);
 
+    if (!username || !profilePicture || userId !== localStorage.getItem('userId')) {
+        fetchProfileData();
+    } else {
+        setIsLoading(false);
+    }
+  }, [userId, location.pathname, navigate, setIsAuthenticated, username, profilePicture]);
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('username');
+    localStorage.removeItem('profilePicture');
     setIsAuthenticated(false);
     navigate('/login');
   };
-
   const handleUserSearch = (e) => {
     e.preventDefault();
     if (userSearchQuery.trim()) {
@@ -80,21 +87,17 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
       setIsNavOpen(false);
     }
   };
-
   const handleMovieSearch = (e) => {
     e.preventDefault();
     handleSearch(e);
     setIsNavOpen(false);
   };
-
   const toggleNav = () => {
     setIsNavOpen(!isNavOpen);
   };
-
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
-
   if (isLoading) {
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
@@ -109,14 +112,12 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
       </nav>
     );
   }
-
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">
         <Link className="navbar-brand" to="/" onClick={() => setIsNavOpen(false)}>
           <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
         </Link>
-        
         <button 
           className={`navbar-toggler ${isNavOpen ? '' : 'collapsed'}`}
           type="button" 
@@ -127,7 +128,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         >
           <span className="navbar-toggler-icon"></span>
         </button>
-
         <div 
           className={`navbar-collapse ${isNavOpen ? 'show' : 'collapse'}`}
           id="navbarContent"
@@ -144,7 +144,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
               </Link>
             </li>
           </ul>
-
           <div className="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 ms-auto">
             <form onSubmit={handleMovieSearch} className="d-flex my-2 my-lg-0">
               <input
@@ -152,20 +151,18 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
                 placeholder="Buscar películas..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="form-control bg-dark text-white"
+                className="form-control bg-light text-white"
               />
             </form>
-
             <form onSubmit={handleUserSearch} className="d-flex my-2 my-lg-0">
               <input
                 type="search"
                 placeholder="Buscar usuarios..."
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
-                className="form-control bg-dark text-white"
+                className="form-control bg-light text-white"
               />
             </form>
-
             <ul className="navbar-nav">
               <li className={`nav-item dropdown ${isDropdownOpen ? 'show' : ''}`}>
                 <button 
@@ -213,5 +210,4 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     </nav>
   );
 };
-
 export default AuthenticatedHeader;

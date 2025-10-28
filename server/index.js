@@ -52,8 +52,7 @@ const List = require('./models/list.model')(sequelize);
 const ListItem = require('./models/listItem.model')(sequelize);
 const TopMovie = require('./models/topMovie.model')(sequelize);
 const TopDirector = require('./models/topDirector.model')(sequelize);
-const UserTopActors = require('./models/userTopActors.model')(sequelize);
-// Define associations
+const UserTopActors = require('./models/userTopActors.model')(sequelize); // Define associations
 User.hasMany(Rating, { foreignKey: 'userId' });
 Rating.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(UserTopActors, { foreignKey: 'userId' });

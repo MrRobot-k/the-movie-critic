@@ -349,6 +349,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setProfilePicture(getApiUrl(data.profilePicture));
         setProfilePicturePreview(null);
         setSelectedFile(null);
+        localStorage.setItem('profilePicture', getApiUrl(data.profilePicture));
         alert('Foto de perfil actualizada exitosamente.');
       } else if (response.status === 401 || response.status === 403) handleAuthError();
       else {
@@ -378,6 +379,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         setProfilePicture(null);
         setProfilePicturePreview(null);
         setSelectedFile(null);
+        localStorage.removeItem('profilePicture');
         alert('Foto de perfil eliminada exitosamente.');
       } else if (response.status === 401 || response.status === 403) handleAuthError();
       else {
@@ -588,6 +590,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('username');
+        localStorage.removeItem('profilePicture');
         navigate('/register');
       } else {
         const errorData = await response.json();
