@@ -5,6 +5,15 @@ import placeholderProfile from '/placeholder-profile.svg';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+const getProfileImageUrl = (profilePicture) => {
+  if (!profilePicture) {
+    return placeholderProfile;
+  }
+  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
+    return profilePicture;
+  }
+  return getApiUrl(profilePicture);
+};
 const MembersPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +62,7 @@ const MembersPage = () => {
   return (
     <div className="container" style={{ paddingTop: '80px' }}>
       <h1 className="fw-bold mb-4">Miembros</h1>
+      
       {loading ? (
         <div className="text-center py-5">
           <p>Cargando...</p>
@@ -85,7 +95,7 @@ const MembersPage = () => {
                   <div className="card-body p-3">
                     {/* Foto de perfil circular */}
                     <img
-                      src={user.profilePicture ? getApiUrl(user.profilePicture) : placeholderProfile}
+                      src={getProfileImageUrl(user.profilePicture)}
                       alt={user.username}
                       className="rounded-circle mb-2"
                       style={{ 
@@ -98,10 +108,10 @@ const MembersPage = () => {
                         e.target.onerror = null;
                         e.target.src = placeholderProfile;
                       }}
-                    /> {/* Nombre de usuario */}
+                    />{/* Nombre de usuario */}
                     <h6 className="text-light mb-1 fw-bold" style={{ fontSize: '1rem' }}>
                       {user.username}
-                    </h6> {/* Eslogan */}
+                    </h6>{/* Eslogan */}
                     {user.slogan ? (
                       <p className="text-muted small mb-3" style={{ 
                         fontSize: '0.75rem',
@@ -115,7 +125,7 @@ const MembersPage = () => {
                       </p>
                     ) : (
                       <div style={{ minHeight: '2.5rem', marginBottom: '1rem' }}></div>
-                    )} {/* 4 películas en línea horizontal */}
+                    )}{/* 4 películas en línea horizontal */}
                     <div className="d-flex gap-1" style={{ overflow: 'hidden' }}>
                       {user.topMovies && user.topMovies.length > 0 ? (
                         [0, 1, 2, 3].map((idx) => {
