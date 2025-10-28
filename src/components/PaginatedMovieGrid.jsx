@@ -134,47 +134,27 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             urlParams += `&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}`;
           }
         }
-        let url1, url2;
-        if (query) {
-          url1 = `${import.meta.env.VITE_BASE_URL}/search/multi?${urlParams}&page=${firstTmdbPage}`;
-          url2 = `${import.meta.env.VITE_BASE_URL}/search/multi?${urlParams}&page=${secondTmdbPage}`;
-        } else if (sortBy === 'classics') {
-          url1 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&sort_by=vote_average.desc&vote_count.gte=1000&vote_average.gte=7.5&primary_release_date.lte=2010-12-31&page=${firstTmdbPage}`;
-          url2 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&sort_by=vote_average.desc&vote_count.gte=1000&vote_average.gte=7.5&primary_release_date.lte=2010-12-31&page=${secondTmdbPage}`;
-        } else {
-          url1 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${firstTmdbPage}`;
-          url2 = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${secondTmdbPage}`;
-        }
-        console.log('Fetching URLs:', { url1, url2 });
-        const [response1, response2] = await Promise.all([
-          fetch(url1),
-          fetch(url2)
-        ]);
-        console.log('Response status:', { status1: response1.status, status2: response2.status });
-        if (!response1.ok) {
-          console.error('Error fetching from TMDB. Status:', response1.status);
-          const errorText = await response1.text();
+        const url = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${currentPage}`;
+        console.log('Fetching URL:', url);
+
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+          console.error('Error fetching from TMDB. Status:', response.status);
+          const errorText = await response.text();
           console.error('Error response text:', errorText);
           throw new Error('Error al obtener las películas de TMDB.');
         }
-        const data1 = await response1.json();
-        const data2 = response2.ok ? await response2.json() : { results: [] };
-        let combinedResults = [...data1.results, ...data2.results];
 
-        // Filter out duplicates if any (can happen with pagination overlap or API quirks)
-        const uniqueResults = new Map();
-        combinedResults.forEach(item => {
-          if (item.id) {
-            uniqueResults.set(item.id, item);
-          }
-        });
-        combinedResults = Array.from(uniqueResults.values());
-
-        const offset = startIndex % moviesPerTmdbPage;
-        allMovies = combinedResults.slice(offset, offset + desiredMoviesPerPage).map(item => ({
+        const data = await response.json();
+        allMovies = data.results.map(item => ({
           ...item,
           mediaType: item.media_type || (item.title ? 'movie' : 'tv')
         }));
+
+        setMovies(allMovies);
+        setTotalPages(data.total_pages);
 
         // Fetch user ratings, liked, and watched status if authenticated and merge them
         const authToken = localStorage.getItem('token');
@@ -210,20 +190,16 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
               console.warn('Failed to fetch user watched status for TMDB movies:', userWatchedResponse.status);
             }
 
-            allMovies = allMovies.map(movie => ({
+            setMovies(currentMovies => currentMovies.map(movie => ({
               ...movie,
               userScore: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null,
               isLiked: likedMap.has(`${movie.id}-${movie.mediaType}`),
               isWatched: watchedMap.has(`${movie.id}-${movie.mediaType}`)
-            }));
+            })));
           } catch (mergeError) {
             console.error('Error merging user data for TMDB movies:', mergeError);
           }
         }
-
-        const totalTmdbResults = data1.total_results;
-        setTotalPages(Math.ceil(totalTmdbResults / desiredMoviesPerPage));
-        setMovies(allMovies);
       }
       if (allMovies.length === 0) {
         setMovies([]);
