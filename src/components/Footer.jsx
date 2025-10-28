@@ -11,7 +11,7 @@ const Footer = () => {
               Tu plataforma para descubrir, calificar y organizar películas y series.
             </p>
             <p className="small">
-              Powered by <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB API</a>
+              API de <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB API</a>
             </p>
           </div>
           <div className="col-md-3 mb-3">
