@@ -26,6 +26,7 @@ import { getApiUrl } from "./config/api";
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || null);
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMovie, setSelectedMovie] = useState(null);
@@ -170,6 +171,7 @@ export default function App() {
             setQuery={setQuery}
             handleSearch={handleSearch}
             setIsAuthenticated={setIsAuthenticated}
+            profilePicture={profilePicture}
           />
         ) : (
           <GuestHeader />
@@ -177,7 +179,7 @@ export default function App() {
       </header>
       <Routes>
         <Route path="/" element={<HomePage {...modalProps} query={searchQuery} clearSearch={clearSearch} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} setProfilePicture={setProfilePicture} />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/visto" element={<WatchedPage {...modalProps} />} />
         <Route path="/likes" element={<LikesPage {...modalProps} />} />
@@ -188,8 +190,8 @@ export default function App() {
         <Route path="/listas" element={<AllListsPage />} />
         <Route path="/lista/:listId" element={<ViewListPage {...modalProps} />} />
         <Route path="/person/:personId/:role" element={<PersonDetailsPage {...modalProps} />} />
-        <Route path="/profile" element={<ProfilePage {...modalProps} />} />
-        <Route path="/profile/:username" element={<ProfilePage {...modalProps} />} />
+        <Route path="/profile" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
+        <Route path="/profile/:username" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
         <Route path="/users/search" element={<UserSearchPage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/top-movies-editor" element={<TopMoviesEditor />} />

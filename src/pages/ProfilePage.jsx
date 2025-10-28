@@ -20,7 +20,7 @@ const renderStars = (score) => {
     </>
   );
 };
-const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate }) => {
+const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthenticated, onRateMovie, onToggleLike, onToggleWatchlist, movieList, currentIndex, onNavigate, profilePicture, setProfilePicture }) => {
   const navigate = useNavigate();
   const { username: paramUsername } = useParams();
   const location = useLocation();
@@ -31,7 +31,6 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const [slogan, setSlogan] = useState('');
   const [userId, setUserId] = useState(null);
   const [newSlogan, setNewSlogan] = useState('');
-  const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [reviews, setReviews] = useState([]);

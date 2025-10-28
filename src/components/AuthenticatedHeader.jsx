@@ -2,76 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
-const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated }) => {
-  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || null);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [username, setUsername] = useState(localStorage.getItem('username') || '');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isNavOpen, setIsNavOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // ← NUEVO estado para dropdown
-  const navigate = useNavigate();
-  const location = useLocation();
-  const userId = localStorage.getItem('userId');
-  useEffect(() => {
-    setIsNavOpen(false);
-    setIsDropdownOpen(false);
-  }, [location.pathname]);
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      setIsLoading(true);
-      if (!userId) {
-        setIsLoading(false);
-        navigate('/login');
-        return;
-      }
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setIsLoading(false);
-        navigate('/login');
-        return;
-      }
-      try {
-        const response = await fetch(getApiUrl(`/api/users/${userId}`), { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Cache-control': 'no-cache'
-          } 
-        });
-        if (response.ok) {
-          const userData = await response.json();
-const newProfilePicture = userData.profilePicture ? userData.profilePicture : null;
-
-          setProfilePicture(newProfilePicture);
-
-          localStorage.setItem('username', userData.username);
-          if (newProfilePicture) {
-            localStorage.setItem('profilePicture', newProfilePicture);
-          } else {
-            localStorage.removeItem('profilePicture');
-          }
-        } else if (response.status === 401 || response.status === 403) {
-          console.error("Authorization error:", response);
-          localStorage.removeItem('token');
-          localStorage.removeItem('userId');
-          localStorage.removeItem('username');
-          localStorage.removeItem('profilePicture');
-          setIsAuthenticated(false);
-          navigate('/login');
-        } else console.error("Error fetching profile data:", response);
-      } catch (error) {
-        console.error('Error fetching profile data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (!username || !profilePicture || userId !== localStorage.getItem('userId')) {
-        fetchProfileData();
-    } else {
-        setIsLoading(false);
-    }
-  }, [userId, location.pathname, navigate, setIsAuthenticated, username, profilePicture]);
-  const handleLogout = () => {
+const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated, profilePicture }) => {
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [username, setUsername] = useState(localStorage.getItem('username') || '');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isNavOpen, setIsNavOpen] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false); // ← NUEVO estado para dropdown
+    const navigate = useNavigate();
+    const location = useLocation();
+    const userId = localStorage.getItem('userId');
+    useEffect(() => {
+      setIsNavOpen(false);
+      setIsDropdownOpen(false);
+    }, [location.pathname]);
+    useEffect(() => {
+      const updateUsername = () => {
+        const storedUsername = localStorage.getItem('username');
+        if (storedUsername) {
+          setUsername(storedUsername);
+        }
+      };
+      updateUsername();
+      window.addEventListener('storage', updateUsername);
+      return () => window.removeEventListener('storage', updateUsername);
+    }, [location.pathname]);  const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('username');
@@ -97,20 +51,6 @@ const newProfilePicture = userData.profilePicture ? userData.profilePicture : nu
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
-  if (isLoading) {
-    return (
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
-        <div className="container-fluid">
-          <Link className="navbar-brand" to="/">
-            <img src={logo} alt="The Movie Critic Logo" style={{ height: '35px' }} />
-          </Link>
-          <div className="ms-auto">
-            <span className="text-white">Cargando...</span>
-          </div>
-        </div>
-      </nav>
-    );
-  }
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 fixed-top">
       <div className="container-fluid">

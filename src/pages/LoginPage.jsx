@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 
-const LoginPage = ({ setIsAuthenticated }) => {
+const LoginPage = ({ setIsAuthenticated, setProfilePicture }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,6 +28,13 @@ const LoginPage = ({ setIsAuthenticated }) => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('username', data.user.username);
+        if (data.user.profilePicture) {
+          localStorage.setItem('profilePicture', data.user.profilePicture);
+          setProfilePicture(data.user.profilePicture);
+        } else {
+          localStorage.removeItem('profilePicture');
+          setProfilePicture(null);
+        }
         
         // Actualizar el estado de autenticación INMEDIATAMENTE
         setIsAuthenticated(true);
