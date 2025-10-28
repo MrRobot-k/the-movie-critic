@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Sequelize } = require('sequelize');
+const { put } = require('@vercel/blob');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
@@ -15,15 +16,7 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -133,10 +126,17 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
   try {
     const userId = req.user.id;
     if (!req.file) return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
+
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    user.profilePicture = `/uploads/${req.file.filename}`;
+
+    const blob = await put(req.file.originalname, req.file.buffer, {
+      access: 'public',
+    });
+
+    user.profilePicture = blob.url;
     await user.save();
+
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
   } catch (error) {
     console.error('Error updating profile picture:', error);
