@@ -132,6 +132,7 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
 
     const blob = await put(req.file.originalname, req.file.buffer, {
       access: 'public',
+      addRandomSuffix: true,
     });
 
     user.profilePicture = blob.url;
