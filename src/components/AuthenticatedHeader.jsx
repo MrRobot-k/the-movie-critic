@@ -39,10 +39,9 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
         });
         if (response.ok) {
           const userData = await response.json();
-          const newProfilePicture = userData.profilePicture ? getApiUrl(userData.profilePicture) : null;
+const newProfilePicture = userData.profilePicture ? userData.profilePicture : null;
 
           setProfilePicture(newProfilePicture);
-          setUsername(userData.username);
 
           localStorage.setItem('username', userData.username);
           if (newProfilePicture) {

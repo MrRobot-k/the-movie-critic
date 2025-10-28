@@ -84,7 +84,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
       setUserId(userData.id);
       setUsername(userData.username);
             setSlogan(userData.slogan || '');
-            setProfilePicture(userData.profilePicture ? getApiUrl(userData.profilePicture) : null);
+            setProfilePicture(userData.profilePicture ? userData.profilePicture : null);
             setStats(prev => ({ ...prev, reviews: userData.reviewsCount || 0 }));
       
             const userId = userData.id;
