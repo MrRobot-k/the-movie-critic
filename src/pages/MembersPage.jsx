@@ -6,33 +6,24 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const getProfileImageUrl = (profilePicture) => {
-  if (!profilePicture) {
-    return placeholderProfile;
-  }
-  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) {
-    return profilePicture;
-  }
+  if (!profilePicture) return placeholderProfile;
+  if (profilePicture.startsWith('http://') || profilePicture.startsWith('https://')) return profilePicture;
   return getApiUrl(profilePicture);
 };
 const MembersPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]),  [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(getApiUrl('/api/users'));
-        const data = await response.json();
-        const usersWithMovies = await Promise.all(
+        const response = await fetch(getApiUrl('/api/users')), data = await response.json(), usersWithMovies = await Promise.all(
           data.map(async (user) => {
             try {
               const topMoviesRes = await fetch(getApiUrl(`/api/users/${user.id}/top-movies`));
               if (topMoviesRes.ok) {
-                const topMoviesData = await topMoviesRes.json();
-                const movieDetails = await Promise.all(
+                const topMoviesData = await topMoviesRes.json(), movieDetails = await Promise.all(
                   topMoviesData.topMovies.slice(0, 4).map(async (item) => {
                     try {
-                      const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-                      const detail = await detailRes.json();
+                      const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`), detail = await detailRes.json();
                       return detail;
                     } catch (error) {
                       return null;
