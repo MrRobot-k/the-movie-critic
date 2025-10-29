@@ -50,6 +50,9 @@ export default function App() {
         path: location.pathname 
       });
       setIsAuthenticated(isAuth);
+      if (isAuth) {
+        setProfilePicture(localStorage.getItem('profilePicture'));
+      }
     };
     checkAuth();
     const handleStorageChange = () => {
