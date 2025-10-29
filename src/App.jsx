@@ -1,29 +1,32 @@
 // test comment
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import "./styles.css";
 import AuthenticatedHeader from "./components/AuthenticatedHeader";
 import GuestHeader from "./components/GuestHeader";
 import Footer from "./components/Footer";
-import HomePage from "./pages/HomePage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import WatchedPage from "./pages/WatchedPage";
-import LikesPage from "./pages/LikesPage";
-import WatchlistPage from "./pages/WatchlistPage";
-import MyListsPage from "./pages/MyListsPage";
-import CreateListPage from "./pages/CreateListPage";
-import ViewListPage from "./pages/ViewListPage";
-import AllListsPage from "./pages/AllListsPage";
-import PersonDetailsPage from "./pages/PersonDetailsPage";
-import ProfilePage from "./pages/ProfilePage";
-import TopMoviesEditor from './pages/TopMoviesEditor';
-import TopDirectorsEditor from './pages/TopDirectorsEditor';
-import TopActorsEditor from './pages/TopActorsEditor';
-import UserSearchPage from './pages/UserSearchPage';
-import MembersPage from './pages/MembersPage';
 import { getApiUrl } from "./config/api";
+
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const WatchedPage = lazy(() => import("./pages/WatchedPage"));
+const LikesPage = lazy(() => import("./pages/LikesPage"));
+const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
+const MyListsPage = lazy(() => import("./pages/MyListsPage"));
+const CreateListPage = lazy(() => import("./pages/CreateListPage"));
+const ViewListPage = lazy(() => import("./pages/ViewListPage"));
+const AllListsPage = lazy(() => import("./pages/AllListsPage"));
+const PersonDetailsPage = lazy(() => import("./pages/PersonDetailsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const TopMoviesEditor = lazy(() => import('./pages/TopMoviesEditor'));
+const TopDirectorsEditor = lazy(() => import('./pages/TopDirectorsEditor'));
+const TopActorsEditor = lazy(() => import('./pages/TopActorsEditor'));
+const UserSearchPage = lazy(() => import('./pages/UserSearchPage'));
+const MembersPage = lazy(() => import('./pages/MembersPage'));
+
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || null);
@@ -34,6 +37,7 @@ export default function App() {
   const [currentMovieIndex, setCurrentMovieIndex] = useState(-1);
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('token');
@@ -56,6 +60,7 @@ export default function App() {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [location.pathname]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
@@ -63,10 +68,12 @@ export default function App() {
       if (location.pathname !== '/') navigate('/');
     }
   };
+
   const clearSearch = () => {
     setQuery("");
     setSearchQuery("");
   };
+
   const getMovieDetails = async (id, mediaType, userScore, list = null, index = -1) => {
     try {
       const effectiveMediaType = mediaType;
@@ -94,11 +101,13 @@ export default function App() {
       console.error("Error fetching details:", error);
     }
   };
+
   const onCloseDetails = () => {
     setSelectedMovie(null);
     setCurrentMovieList(null);
     setCurrentMovieIndex(-1);
   };
+
   const handleNavigateInModal = (direction) => {
     if (!currentMovieList || currentMovieIndex === -1) return;
     const newIndex = direction === 'next' ? currentMovieIndex + 1 : currentMovieIndex - 1;
@@ -107,10 +116,12 @@ export default function App() {
       getMovieDetails(nextMovie.id, nextMovie.mediaType, nextMovie.userScore, currentMovieList, newIndex);
     }
   };
+
   useEffect(() => {
     if (selectedMovie) document.body.classList.add("modal-open");
     else document.body.classList.remove("modal-open");
   }, [selectedMovie]);
+
   const onRateMovie = async (mediaId, mediaType, score) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -124,6 +135,7 @@ export default function App() {
       console.error("Error al calificar:", error.message);
     }
   };
+
   const onToggleLike = async (id, mediaType) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -137,6 +149,7 @@ export default function App() {
       console.error("Error al alternar Me gusta:", error.message);
     }
   };
+
   const onToggleWatchlist = async (mediaId, mediaType) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -150,6 +163,7 @@ export default function App() {
       console.error("Error al alternar Watchlist:", error.message);
     }
   };
+
   const modalProps = {
     getMovieDetails,
     selectedMovie,
@@ -162,6 +176,7 @@ export default function App() {
     currentIndex: currentMovieIndex,
     onNavigate: handleNavigateInModal,
   };
+
   return (
     <div>
       <header>
@@ -177,27 +192,29 @@ export default function App() {
           <GuestHeader />
         )}
       </header>
-      <Routes>
-        <Route path="/" element={<HomePage {...modalProps} query={searchQuery} clearSearch={clearSearch} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} setProfilePicture={setProfilePicture} />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/visto" element={<WatchedPage {...modalProps} />} />
-        <Route path="/likes" element={<LikesPage {...modalProps} />} />
-        <Route path="/watchlist" element={<WatchlistPage {...modalProps} />} />
-        <Route path="/mis-listas" element={<MyListsPage />} />
-        <Route path="/crear-lista" element={<CreateListPage />} />
-        <Route path="/editar-lista/:listId" element={<CreateListPage />} />
-        <Route path="/listas" element={<AllListsPage />} />
-        <Route path="/lista/:listId" element={<ViewListPage {...modalProps} />} />
-        <Route path="/person/:personId/:role" element={<PersonDetailsPage {...modalProps} />} />
-        <Route path="/profile" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
-        <Route path="/profile/:username" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
-        <Route path="/users/search" element={<UserSearchPage />} />
-        <Route path="/members" element={<MembersPage />} />
-        <Route path="/top-movies-editor" element={<TopMoviesEditor />} />
-        <Route path="/top-directors-editor" element={<TopDirectorsEditor />} />
-        <Route path="/top-actors-editor" element={<TopActorsEditor />} />
-      </Routes>
+      <Suspense fallback={<div>Cargando...</div>}>
+        <Routes>
+          <Route path="/" element={<HomePage {...modalProps} query={searchQuery} clearSearch={clearSearch} />} />
+          <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} setProfilePicture={setProfilePicture} />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/visto" element={<WatchedPage {...modalProps} />} />
+          <Route path="/likes" element={<LikesPage {...modalProps} />} />
+          <Route path="/watchlist" element={<WatchlistPage {...modalProps} />} />
+          <Route path="/mis-listas" element={<MyListsPage />} />
+          <Route path="/crear-lista" element={<CreateListPage />} />
+          <Route path="/editar-lista/:listId" element={<CreateListPage />} />
+          <Route path="/listas" element={<AllListsPage />} />
+          <Route path="/lista/:listId" element={<ViewListPage {...modalProps} />} />
+          <Route path="/person/:personId/:role" element={<PersonDetailsPage {...modalProps} />} />
+          <Route path="/profile" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
+          <Route path="/profile/:username" element={<ProfilePage {...modalProps} profilePicture={profilePicture} setProfilePicture={setProfilePicture} />} />
+          <Route path="/users/search" element={<UserSearchPage />} />
+          <Route path="/members" element={<MembersPage />} />
+          <Route path="/top-movies-editor" element={<TopMoviesEditor />} />
+          <Route path="/top-directors-editor" element={<TopDirectorsEditor />} />
+          <Route path="/top-actors-editor" element={<TopActorsEditor />} />
+        </Routes>
+      </Suspense>
       <Footer />
     </div>
   );

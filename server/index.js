@@ -896,7 +896,6 @@ app.get('/api/users', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/users/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -924,9 +923,7 @@ app.get('/api/users/username/:username', async (req, res) => {
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
     });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-
     const reviewsCount = await Review.count({ where: { userId: user.id } });
-
     const userProfile = {
       id: user.id,
       username: user.username,
@@ -935,7 +932,6 @@ app.get('/api/users/username/:username', async (req, res) => {
       slogan: user.slogan,
       reviewsCount: reviewsCount
     };
-
     res.status(200).json(userProfile);
   } catch (error) {
     console.error('Error fetching user profile by username:', error);
