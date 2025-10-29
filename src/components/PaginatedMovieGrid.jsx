@@ -81,9 +81,40 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         }
         const data = await response.json();
         if (data.hasOwnProperty('watchedMovies')) allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
-        else if (data.hasOwnProperty('likedItems')) allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('likedItems')) {
+          allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+          if (token) {
+            try {
+              const userRatingsResponse = await fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${token}` } });
+              if (userRatingsResponse.ok) {
+                const userRatingsData = await userRatingsResponse.json();
+                const ratingsMap = new Map(userRatingsData.watchedMovies.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
+                allMovies = allMovies.map(movie => ({
+                  ...movie,
+                  score: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null
+                }));
+              }
+            } catch (error) {
+              console.error('Error fetching user ratings for liked items:', error);
+            }
+          }
+        }
         else if (data.hasOwnProperty('watchlistedMovies')) allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
         allMovies = allMovies.filter(item => item.id && item.mediaType);
+
+        let likedMap = new Set();
+        if (token) {
+          try {
+            const userLikesResponse = await fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (userLikesResponse.ok) {
+              const userLikesData = await userLikesResponse.json();
+              likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+            }
+          } catch (error) {
+            console.error('Error fetching user likes:', error);
+          }
+        }
+
         const itemDetailsPromises = allMovies.map(async (item) => {
           const detailUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.id}?api_key=${API_KEY}&language=es-MX`;
           const detailRes = await fetch(detailUrl);
@@ -92,9 +123,15 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             return null;
           }
           const detail = await detailRes.json();
-          return { ...detail, userScore: item.score, mediaType: item.mediaType };
+          return { 
+            ...detail, 
+            userScore: item.score, 
+            mediaType: item.mediaType,
+            isLiked: likedMap.has(`${item.id}-${item.mediaType}`)
+          };
         });
         let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
+
         if (selectedGenre) detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
         if (selectedCountry) detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
         if (selectedDecade) {
@@ -257,6 +294,26 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         return { ...detail, userScore: item.score, mediaType: item.mediaType };
       });
       let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
+
+      const authToken = localStorage.getItem('token');
+      if (authToken) {
+        try {
+          const userLikesResponse = await fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${authToken}` } });
+          let likedMap = new Set();
+          if (userLikesResponse.ok) {
+            const userLikesData = await userLikesResponse.json();
+            likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+          }
+          detailedItems = detailedItems.map(movie => ({
+            ...movie,
+            isLiked: likedMap.has(`${movie.id}-${movie.mediaType}`),
+            isWatched: true // Since we are on the watched page
+          }));
+        } catch (mergeError) {
+          console.error('Error merging user data for API movies:', mergeError);
+        }
+      }
+
       if (selectedGenre) detailedItems = detailedItems.filter(movie => movie.genres && movie.genres.some(g => g.id == selectedGenre));
       if (selectedCountry) detailedItems = detailedItems.filter(movie => movie.origin_country && movie.origin_country.includes(selectedCountry));
       if (selectedDecade) {
@@ -392,29 +449,30 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         <div className="row g-1 poster-grid">
                               {movies.map((movie) => (
                                 <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-                                  <div className="movie-card" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>                <div className="poster-container">
-                  <img
-                    src={
-                      movie.poster_path
-                        ? `${IMAGE_BASE_URL}/w342${movie.poster_path}`
-                        : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
-                    }
-                    alt={movie.title || movie.name}
-                  />
-                </div>
-                {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
-                  <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                    {movie.userScore > 0 && (
-                      <span className="d-flex align-items-center">
-                        {renderStars(movie.userScore)}
-                      </span>
-                    )}
-                    {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
-                    {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
-                  </div>
-                )}
-              </div>
-            </div>
+                                  <div className="movie-card h-100" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>
+                                    <div className="poster-container">
+                                      <img
+                                        src={
+                                          movie.poster_path
+                                            ? `${IMAGE_BASE_URL}/w342${movie.poster_path}`
+                                            : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+                                        }
+                                        alt={movie.title || movie.name}
+                                        className="img-fluid"
+                                      />
+                                    </div>
+                                    <div className="movie-info">
+                                      <div className="d-flex justify-content-start align-items-center mt-2">
+                                        {movie.userScore > 0 && (
+                                          <span className="d-flex align-items-center me-2">
+                                            {renderStars(movie.userScore)}
+                                          </span>
+                                        )}
+                                        {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger me-2" />}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
           ))}
         </div>
       )}

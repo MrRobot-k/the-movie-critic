@@ -207,7 +207,7 @@ app.get('/api/users/watched', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { count, rows } = await Rating.findAndCountAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType'],
+      attributes: ['mediaId', 'mediaType', 'score'],
     });
     res.status(200).json({ watchedMovies: rows, totalPages: 1 });
   } catch (error) {
@@ -219,7 +219,7 @@ app.get('/api/users/:userId/watched', async (req, res) => {
     const { userId } = req.params;
     const { count, rows } = await Rating.findAndCountAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType'],
+      attributes: ['mediaId', 'mediaType', 'score'],
     });
     res.status(200).json({ watchedMovies: rows, totalPages: 1 });
   } catch (error) {

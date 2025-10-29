@@ -756,17 +756,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                         <div className="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 rounded-end">
                           #{index + 1}
                         </div>
-                        {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
-                          <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                            {movie.userScore > 0 && (
-                              <span className="d-flex align-items-center">
-                                {renderStars(movie.userScore)}
-                              </span>
-                            )}
-                            {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
-                            {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
-                          </div>
-                        )}
+
                       </div>
                       {isOwnProfile && (
                         <button

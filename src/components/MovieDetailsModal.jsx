@@ -308,18 +308,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
                 <h2 className="fw-bold">{getTitle()}</h2>
                 {getOriginalTitle() && getOriginalTitle() !== getTitle() && <p className="fst-italic">{getOriginalTitle()}</p>}
                 
-                {(userRating > 0 || isLiked || isWatched) && isAuthenticated && (
-                  <div className="d-flex align-items-center gap-3 mt-2 mb-3">
-                    {console.log(`MovieDetailsModal - Movie: ${movie.title || movie.name}, User Rating: ${userRating}, Is Liked: ${isLiked}, Is Watched: ${isWatched}`)}
-                    {userRating > 0 && (
-                      <span className="d-flex align-items-center gap-1">
-                        {renderStars(userRating)}
-                      </span>
-                    )}
-                    {isLiked && <Heart size={20} fill="currentColor" className="text-danger" />}
-                    {isWatched && <Eye size={20} fill="currentColor" className="text-success" />}
-                  </div>
-                )}
+
 
                 <div className="d-flex align-items-center gap-3 mt-2">
                   <div className="d-flex align-items-center gap-1">
