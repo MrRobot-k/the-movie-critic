@@ -5,6 +5,7 @@ const { put } = require('@vercel/blob');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+const fetch = require('node-fetch');
 const app = express();
 const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET;
@@ -99,6 +100,79 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+const authenticateTokenOptional = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) {
+    return next();
+  }
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) {
+      // Invalid token, but we don't want to block the request
+      return next();
+    }
+    req.user = user;
+    next();
+  });
+};
+
+app.get('/api/search', authenticateTokenOptional, async (req, res) => {
+  try {
+    const { query, page = 1 } = req.query;
+    const userId = req.user ? req.user.id : null;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is required.' });
+    }
+
+    // Fetch search results from TMDB
+    const tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.VITE_TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=${page}`;
+    const tmdbResponse = await fetch(tmdbUrl);
+    if (!tmdbResponse.ok) {
+      throw new Error('Failed to fetch search results from TMDB.');
+    }
+    const tmdbData = await tmdbResponse.json();
+
+    let results = tmdbData.results.map(item => ({
+      ...item,
+      mediaType: item.media_type || (item.title ? 'movie' : 'tv')
+    }));
+
+    if (userId) {
+      const mediaIds = results.map(item => item.id);
+
+      const [ratings, likes, watchlist] = await Promise.all([
+        Rating.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId', 'score'] }),
+        Like.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId'] }),
+        Watchlist.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId'] })
+      ]);
+
+      const ratingsMap = new Map(ratings.map(r => [r.mediaId, r.score]));
+      const likesSet = new Set(likes.map(l => l.mediaId));
+      const watchlistSet = new Set(watchlist.map(w => w.mediaId));
+
+      results = results.map(item => ({
+        ...item,
+        userScore: ratingsMap.get(item.id) || null,
+        isLiked: likesSet.has(item.id),
+        isWatched: watchlistSet.has(item.id)
+      }));
+    }
+
+    res.status(200).json({
+      results,
+      total_pages: tmdbData.total_pages,
+      total_results: tmdbData.total_results,
+      page: tmdbData.page
+    });
+
+  } catch (error) {
+    console.error('Error in /api/search:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;

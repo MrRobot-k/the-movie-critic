@@ -56,64 +56,54 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
     setLoading(true);
     setError('');
     const token = localStorage.getItem('token');
-    if (!token && endpoint.startsWith('/api')) {
-      setError('No autenticado. Por favor, inicia sesión.');
-      setLoading(false);
-      navigate('/login');
-      return;
-    }
-    try {
-      let allMovies = [];
-      if (endpoint.startsWith('/api')) {
-        const url = getApiUrl(endpoint);
-        const response = await fetch(url, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        });
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userId');
-            navigate('/login');
-            throw new Error('Sesión expirada o no válida. Por favor, inicia sesión de nuevo.');
-          }
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Error al obtener las películas.");
-        }
-        const data = await response.json();
-        if (data.hasOwnProperty('watchedMovies')) allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
-        else if (data.hasOwnProperty('likedItems')) {
-          allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
-          if (token) {
-            try {
-              const userRatingsResponse = await fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${token}` } });
-              if (userRatingsResponse.ok) {
-                const userRatingsData = await userRatingsResponse.json();
-                const ratingsMap = new Map(userRatingsData.watchedMovies.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
-                allMovies = allMovies.map(movie => ({
-                  ...movie,
-                  score: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null
-                }));
-              }
-            } catch (error) {
-              console.error('Error fetching user ratings for liked items:', error);
-            }
-          }
-        }
-        else if (data.hasOwnProperty('watchlistedMovies')) allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
-        allMovies = allMovies.filter(item => item.id && item.mediaType);
 
-        let likedMap = new Set();
-        if (token) {
-          try {
-            const userLikesResponse = await fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${token}` } });
-            if (userLikesResponse.ok) {
-              const userLikesData = await userLikesResponse.json();
-              likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
-            }
-          } catch (error) {
-            console.error('Error fetching user likes:', error);
-          }
+    try {
+      let url;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      if (endpoint === '/search/multi') {
+        url = getApiUrl(`/api/search?query=${encodeURIComponent(query)}&page=${currentPage}`);
+      } else if (endpoint.startsWith('/api')) {
+        url = getApiUrl(endpoint);
+      } else {
+        let urlParams = `api_key=${API_KEY}&language=es-MX&page=${currentPage}`;
+        if (sortBy !== 'classics') urlParams += `&sort_by=${sortBy}`;
+        if (selectedGenre) urlParams += `&with_genres=${selectedGenre}`;
+        if (selectedCountry) urlParams += `&with_origin_country=${selectedCountry}`;
+        if (selectedDecade) {
+          const startDate = `${selectedDecade}-01-01`;
+          const endDate = `${parseInt(selectedDecade) + 9}-12-31`;
+          urlParams += `&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}`;
         }
+        url = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}`;
+      }
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          navigate('/login');
+          throw new Error('Sesión expirada o no válida. Por favor, inicia sesión de nuevo.');
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error al obtener las películas.");
+      }
+
+      const data = await response.json();
+
+      if (endpoint === '/search/multi') {
+        setMovies(data.results);
+        setTotalPages(data.total_pages);
+      } else if (endpoint.startsWith('/api')) {
+        // Existing logic for internal API endpoints
+        let allMovies = [];
+        if (data.hasOwnProperty('watchedMovies')) allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('likedItems')) allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('watchlistedMovies')) allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
+        
+        allMovies = allMovies.filter(item => item.id && item.mediaType);
 
         const itemDetailsPromises = allMovies.map(async (item) => {
           const detailUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.id}?api_key=${API_KEY}&language=es-MX`;
@@ -127,7 +117,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             ...detail, 
             userScore: item.score, 
             mediaType: item.mediaType,
-            isLiked: likedMap.has(`${item.id}-${item.mediaType}`)
           };
         });
         let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
@@ -153,96 +142,13 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         const endIndex = startIndex + itemsPerPage;
         const paginatedItems = sortedItems.slice(startIndex, endIndex);
         setMovies(paginatedItems);
-      } else { 
-        const moviesPerTmdbPage = 20;
-        const desiredMoviesPerPage = 24;
-        const startIndex = (currentPage - 1) * desiredMoviesPerPage;
-        const firstTmdbPage = Math.floor(startIndex / moviesPerTmdbPage) + 1;
-        const secondTmdbPage = firstTmdbPage + 1;
-        let urlParams = `api_key=${API_KEY}&language=es-MX`;
-        if (query) urlParams += `&query=${encodeURIComponent(query)}`;
-        else {
-          if (sortBy !== 'classics') urlParams += `&sort_by=${sortBy}`;
-          if (selectedGenre) urlParams += `&with_genres=${selectedGenre}`;
-          if (selectedCountry) urlParams += `&with_origin_country=${selectedCountry}`;
-          if (selectedDecade) {
-            const startDate = `${selectedDecade}-01-01`;
-            const endDate = `${parseInt(selectedDecade) + 9}-12-31`;
-            urlParams += `&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}`;
-          }
-        }
-        const url = `${import.meta.env.VITE_BASE_URL}${endpoint}?${urlParams}&page=${currentPage}`;
-        console.log('Fetching URL:', url);
 
-        const response = await fetch(url);
-        console.log('Response status:', response.status);
-
-        if (!response.ok) {
-          console.error('Error fetching from TMDB. Status:', response.status);
-          const errorText = await response.text();
-          console.error('Error response text:', errorText);
-          throw new Error('Error al obtener las películas de TMDB.');
-        }
-
-        const data = await response.json();
-        allMovies = data.results.map(item => ({
-          ...item,
-          mediaType: item.media_type || (item.title ? 'movie' : 'tv')
-        }));
-
-        setMovies(allMovies);
+      } else {
+        // TMDB discover endpoint
+        setMovies(data.results);
         setTotalPages(data.total_pages);
-
-        // Fetch user ratings, liked, and watched status if authenticated and merge them
-        const authToken = localStorage.getItem('token');
-        if (authToken) {
-          try {
-            const [userRatingsResponse, userLikesResponse, userWatchedResponse] = await Promise.all([
-              fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${authToken}` } }),
-              fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${authToken}` } }),
-              fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${authToken}` } }) // Assuming watched is same as ratings
-            ]);
-
-            let ratingsMap = new Map();
-            if (userRatingsResponse.ok) {
-              const userRatingsData = await userRatingsResponse.json();
-              ratingsMap = new Map(userRatingsData.watchedMovies.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
-            } else {
-              console.warn('Failed to fetch user ratings for TMDB movies:', userRatingsResponse.status);
-            }
-
-            let likedMap = new Set();
-            if (userLikesResponse.ok) {
-              const userLikesData = await userLikesResponse.json();
-              likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
-            } else {
-              console.warn('Failed to fetch user likes for TMDB movies:', userLikesResponse.status);
-            }
-
-            let watchedMap = new Set();
-            if (userWatchedResponse.ok) {
-              const userWatchedData = await userWatchedResponse.json();
-              watchedMap = new Set(userWatchedData.watchedMovies.map(item => `${item.mediaId}-${item.mediaType}`));
-            } else {
-              console.warn('Failed to fetch user watched status for TMDB movies:', userWatchedResponse.status);
-            }
-
-            setMovies(currentMovies => currentMovies.map(movie => ({
-              ...movie,
-              userScore: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null,
-              isLiked: likedMap.has(`${movie.id}-${movie.mediaType}`),
-              isWatched: watchedMap.has(`${movie.id}-${movie.mediaType}`)
-            })));
-          } catch (mergeError) {
-            console.error('Error merging user data for TMDB movies:', mergeError);
-          }
-        }
       }
-      if (allMovies.length === 0) {
-        setMovies([]);
-        setLoading(false);
-        return;
-      }
+
     } catch (err) {
       console.error(`Error in PaginatedMovieGrid for endpoint ${endpoint}:`, err);
       setError(err.message);
