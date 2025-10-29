@@ -127,7 +127,7 @@ app.get('/api/search', authenticateTokenOptional, async (req, res) => {
     }
 
     // Fetch search results from TMDB
-    const tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.VITE_TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=${page}`;
+    const tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=${page}`;
     const tmdbResponse = await fetch(tmdbUrl);
     if (!tmdbResponse.ok) {
       throw new Error('Failed to fetch search results from TMDB.');
