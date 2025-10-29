@@ -97,13 +97,42 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         setMovies(data.results);
         setTotalPages(data.total_pages);
       } else if (endpoint.startsWith('/api')) {
-        // Existing logic for internal API endpoints
         let allMovies = [];
         if (data.hasOwnProperty('watchedMovies')) allMovies = data.watchedMovies.map(item => ({ ...item, id: item.mediaId }));
-        else if (data.hasOwnProperty('likedItems')) allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+        else if (data.hasOwnProperty('likedItems')) {
+          allMovies = data.likedItems.map(item => ({ ...item, id: item.mediaId }));
+          if (token) {
+            try {
+              const userRatingsResponse = await fetch(getApiUrl('/api/users/watched'), { headers: { 'Authorization': `Bearer ${token}` } });
+              if (userRatingsResponse.ok) {
+                const userRatingsData = await userRatingsResponse.json();
+                const ratingsMap = new Map(userRatingsData.watchedMovies.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
+                allMovies = allMovies.map(movie => ({
+                  ...movie,
+                  score: ratingsMap.get(`${movie.id}-${movie.mediaType}`) || null
+                }));
+              }
+            } catch (error) {
+              console.error('Error fetching user ratings for liked items:', error);
+            }
+          }
+        }
         else if (data.hasOwnProperty('watchlistedMovies')) allMovies = data.watchlistedMovies.map(item => ({ ...item, id: item.mediaId }));
         
         allMovies = allMovies.filter(item => item.id && item.mediaType);
+
+        let likedMap = new Set();
+        if (token) {
+          try {
+            const userLikesResponse = await fetch(getApiUrl('/api/users/likes'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (userLikesResponse.ok) {
+              const userLikesData = await userLikesResponse.json();
+              likedMap = new Set(userLikesData.likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+            }
+          } catch (error) {
+            console.error('Error fetching user likes:', error);
+          }
+        }
 
         const itemDetailsPromises = allMovies.map(async (item) => {
           const detailUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.id}?api_key=${API_KEY}&language=es-MX`;
@@ -117,6 +146,7 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
             ...detail, 
             userScore: item.score, 
             mediaType: item.mediaType,
+            isLiked: likedMap.has(`${item.id}-${item.mediaType}`)
           };
         });
         let detailedItems = (await Promise.all(itemDetailsPromises)).filter(Boolean);
@@ -142,7 +172,6 @@ const PaginatedMovieGrid = ({ endpoint = '', title, isAuthenticated, onRateMovie
         const endIndex = startIndex + itemsPerPage;
         const paginatedItems = sortedItems.slice(startIndex, endIndex);
         setMovies(paginatedItems);
-
       } else {
         // TMDB discover endpoint
         setMovies(data.results);
