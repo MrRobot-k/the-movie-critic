@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getApiUrl } from '../config/api';
 import logo from '../assets/icon.png';
-const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated, profilePicture }) => {
+const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated, username, profilePicture }) => {
     const [userSearchQuery, setUserSearchQuery] = useState('');
-    const [username, setUsername] = useState(localStorage.getItem('username') || '');
     const [isLoading, setIsLoading] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false); // ← NUEVO estado para dropdown
@@ -14,17 +13,6 @@ const AuthenticatedHeader = ({ query, setQuery, handleSearch, setIsAuthenticated
     useEffect(() => {
       setIsNavOpen(false);
       setIsDropdownOpen(false);
-    }, [location.pathname]);
-    useEffect(() => {
-      const updateUsername = () => {
-        const storedUsername = localStorage.getItem('username');
-        if (storedUsername) {
-          setUsername(storedUsername);
-        }
-      };
-      updateUsername();
-      window.addEventListener('storage', updateUsername);
-      return () => window.removeEventListener('storage', updateUsername);
     }, [location.pathname]);  const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');

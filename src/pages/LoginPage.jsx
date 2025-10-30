@@ -24,25 +24,15 @@ const LoginPage = ({ setIsAuthenticated, setProfilePicture }) => {
       const data = await response.json();
 
       if (response.ok) {
-        // Guardar en localStorage
+        // Guardar solo token y userId
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.user.id);
-        localStorage.setItem('username', data.user.username);
-        if (data.user.profilePicture) {
-          localStorage.setItem('profilePicture', data.user.profilePicture);
-          setProfilePicture(data.user.profilePicture);
-        } else {
-          localStorage.removeItem('profilePicture');
-          setProfilePicture(null);
-        }
         
-        // Actualizar el estado de autenticación INMEDIATAMENTE
+        // Actualizar el estado de autenticación
         setIsAuthenticated(true);
         
-        // Pequeño delay para asegurar que el estado se actualice antes de navegar
-        setTimeout(() => {
-          navigate('/');
-        }, 100);
+        // Navegar a la página de inicio
+        navigate('/');
       } else {
         setError(data.error || 'Error al iniciar sesión');
       }

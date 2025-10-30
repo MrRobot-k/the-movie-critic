@@ -29,6 +29,7 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState(localStorage.getItem('username') || null);
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture') || null);
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,28 +40,46 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
+    const fetchUserProfile = async () => {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      if (token && userId) {
+        try {
+          const response = await fetch(getApiUrl(`/api/users/${userId}`), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            localStorage.setItem('username', userData.username);
+            setUsername(userData.username);
+            if (userData.profilePicture) {
+              localStorage.setItem('profilePicture', userData.profilePicture);
+              setProfilePicture(userData.profilePicture);
+            } else {
+              localStorage.removeItem('profilePicture');
+              setProfilePicture(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
     const checkAuth = () => {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       const isAuth = !!(token && userId);
-      console.log('Auth check:', { 
-        isAuth, 
-        token: !!token, 
-        userId,
-        path: location.pathname 
-      });
       setIsAuthenticated(isAuth);
       if (isAuth) {
-        setProfilePicture(localStorage.getItem('profilePicture'));
+        fetchUserProfile();
       }
     };
+
     checkAuth();
-    const handleStorageChange = () => {
-      checkAuth();
-    };
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('storage', checkAuth);
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', checkAuth);
     };
   }, [location.pathname]);
 
@@ -189,6 +208,7 @@ export default function App() {
             setQuery={setQuery}
             handleSearch={handleSearch}
             setIsAuthenticated={setIsAuthenticated}
+            username={username}
             profilePicture={profilePicture}
           />
         ) : (
