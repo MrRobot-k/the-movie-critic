@@ -78,7 +78,7 @@ const PaginatedMovieGrid = ({ endpoint = '', title, getMovieDetails, selectedMov
   }, [isError, error, navigate]);
 
   // Procesar los datos recibidos del hook
-  const movies = data?.results || data?.watchedMovies?.map(item => ({ ...item, id: item.mediaId })) || [];
+  const movies = data?.results || data?.watchedMovies || [];
   const totalPages = data?.total_pages || 1;
 
   const handlePageChange = (newPage) => {

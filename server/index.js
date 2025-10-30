@@ -279,12 +279,26 @@ app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
 app.get('/api/users/watched', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { count, rows } = await Rating.findAndCountAll({
+    const ratings = await Rating.findAll({
       where: { userId },
       attributes: ['mediaId', 'mediaType', 'score'],
     });
-    res.status(200).json({ watchedMovies: rows, totalPages: 1 });
+
+    const watchedMovies = await Promise.all(ratings.map(async (rating) => {
+      const url = `https://api.themoviedb.org/3/${rating.mediaType}/${rating.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+      const response = await fetch(url);
+      const details = await response.json();
+      return {
+        ...details,
+        userScore: rating.score,
+        mediaType: rating.mediaType,
+      };
+    }));
+
+
+    res.status(200).json({ watchedMovies, totalPages: 1 });
   } catch (error) {
+    console.error('Error fetching watched movies:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -321,12 +335,25 @@ app.post('/api/media/:mediaId/like', authenticateToken, async (req, res) => {
 app.get('/api/users/likes', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { count, rows } = await Like.findAndCountAll({
+    const likes = await Like.findAll({
       where: { userId },
       attributes: ['mediaId', 'mediaType'],
     });
-    res.status(200).json({ likedItems: rows, totalPages: 1 });
+
+    const results = await Promise.all(likes.map(async (like) => {
+      const url = `https://api.themoviedb.org/3/${like.mediaType}/${like.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+      const response = await fetch(url);
+      const details = await response.json();
+      return {
+        ...details,
+        isLiked: true,
+        mediaType: like.mediaType,
+      };
+    }));
+
+    res.status(200).json({ results, totalPages: 1 });
   } catch (error) {
+    console.error('Error fetching liked items:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -399,12 +426,25 @@ app.get('/api/media/:mediaId/watchlistStatus', authenticateToken, async (req, re
 app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { count, rows } = await Watchlist.findAndCountAll({
+    const watchlistItems = await Watchlist.findAll({
       where: { userId },
       attributes: ['mediaId', 'mediaType'],
     });
-    res.status(200).json({ watchlistedMovies: rows, totalPages: 1 });
+
+    const results = await Promise.all(watchlistItems.map(async (item) => {
+      const url = `https://api.themoviedb.org/3/${item.mediaType}/${item.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+      const response = await fetch(url);
+      const details = await response.json();
+      return {
+        ...details,
+        isWatchlisted: true,
+        mediaType: item.mediaType,
+      };
+    }));
+
+    res.status(200).json({ results, totalPages: 1 });
   } catch (error) {
+    console.error('Error fetching watchlist:', error);
     res.status(500).json({ error: error.message });
   }
 });
