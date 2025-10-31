@@ -96,7 +96,7 @@ export default function App() {
     setSearchQuery("");
   };
 
-  const getMovieDetails = async (id, mediaType, userScore, list = null, index = -1) => {
+  const getMovieDetails = async (id, mediaType, userScore, isLiked, isWatchlisted, list = null, index = -1) => {
     try {
       const effectiveMediaType = mediaType;
       const [detailsRes, creditsRes] = await Promise.all([
@@ -111,6 +111,8 @@ export default function App() {
         cast: credits.cast,
         media_type: effectiveMediaType, // Corrected to media_type
         userScore,
+        isLiked,
+        isWatchlisted,
       });
       if (list) {
         setCurrentMovieList(list);
@@ -135,7 +137,7 @@ export default function App() {
     const newIndex = direction === 'next' ? currentMovieIndex + 1 : currentMovieIndex - 1;
     if (newIndex >= 0 && newIndex < currentMovieList.length) {
       const nextMovie = currentMovieList[newIndex];
-      getMovieDetails(nextMovie.id, nextMovie.mediaType, nextMovie.userScore, currentMovieList, newIndex);
+      getMovieDetails(nextMovie.id, nextMovie.mediaType, nextMovie.userScore, nextMovie.isLiked, nextMovie.isWatchlisted, currentMovieList, newIndex);
     }
   };
 

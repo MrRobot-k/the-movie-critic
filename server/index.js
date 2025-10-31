@@ -279,24 +279,43 @@ app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
 app.get('/api/users/watched', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const ratings = await Rating.findAll({
-      where: { userId },
-      attributes: ['mediaId', 'mediaType', 'score'],
-    });
+    const [ratings, likes, watchlist] = await Promise.all([
+      Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
+      Like.findAll({ where: { userId }, attributes: ['mediaId'] }),
+      Watchlist.findAll({ where: { userId }, attributes: ['mediaId'] })
+    ]);
+
+    const likesSet = new Set(likes.map(l => l.mediaId));
+    const watchlistSet = new Set(watchlist.map(w => w.mediaId));
 
     const watchedMovies = await Promise.all(ratings.map(async (rating) => {
-      const url = `https://api.themoviedb.org/3/${rating.mediaType}/${rating.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
-      const response = await fetch(url);
-      const details = await response.json();
-      return {
-        ...details,
-        userScore: rating.score,
-        mediaType: rating.mediaType,
-      };
+      try {
+        const url = `https://api.themoviedb.org/3/${rating.mediaType}/${rating.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          // Log the error for debugging, but don't let it break the entire Promise.all
+          console.error(`Failed to fetch details for ${rating.mediaType} ID ${rating.mediaId}: ${response.statusText}`);
+          return null;
+        }
+        const details = await response.json();
+        return {
+          ...details,
+          userScore: rating.score,
+          mediaType: rating.mediaType,
+          isLiked: likesSet.has(rating.mediaId),
+          isWatchlisted: watchlistSet.has(rating.mediaId),
+        };
+      } catch (error) {
+        console.error(`Error fetching details for ${rating.mediaType} ID ${rating.mediaId}:`, error);
+        return null;
+      }
     }));
 
+    // Filter out any null results from failed fetches
+    const validWatchedMovies = watchedMovies.filter(movie => movie !== null);
 
-    res.status(200).json({ watchedMovies, totalPages: 1 });
+
+    res.status(200).json({ watchedMovies: validWatchedMovies, totalPages: 1 });
   } catch (error) {
     console.error('Error fetching watched movies:', error);
     res.status(500).json({ error: error.message });

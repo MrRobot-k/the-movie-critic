@@ -164,7 +164,7 @@ const PaginatedMovieGrid = ({ endpoint = '', title, getMovieDetails, selectedMov
         <div className="row g-1 poster-grid">
           {movies.map((movie) => (
             <div key={movie.id} className="col-4 col-md-3 col-lg-2 mb-1">
-              <div className="movie-card h-100" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore)}>
+                            <div className="movie-card h-100" onClick={() => getMovieDetails(movie.id, movie.mediaType, movie.userScore, movie.isLiked, movie.isWatchlisted)}>
                 <div className="poster-container">
                   <img
                     src={

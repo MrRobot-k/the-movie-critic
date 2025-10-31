@@ -158,12 +158,25 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
           setUserRating(movie.userScore);
           if (movie.userScore > 0) setIsWatched(true);
           rating = movie.userScore;
-        } else rating = await fetchUserRating();
+        } else {
+          rating = await fetchUserRating();
+        }
+
+        if (movie.isLiked !== undefined) {
+          setIsLiked(movie.isLiked);
+        } else {
+          await fetchUserLikeStatus();
+        }
+
+        if (movie.isWatchlisted !== undefined) {
+          setIsWatchlisted(movie.isWatchlisted);
+        } else {
+          await fetchUserWatchlistStatus();
+        }
+
         if (rating === 0) await fetchUserWatchedStatus();
         await Promise.all([
-          fetchUserLikeStatus(),
           fetchMyReview(),
-          fetchUserWatchlistStatus()
         ]);
       }
       await fetchAllReviews();
