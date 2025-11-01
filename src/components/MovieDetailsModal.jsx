@@ -136,52 +136,51 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
     } catch (error) { console.error('Error fetching reviews:', error); }
   };
   useEffect(() => {
+    // Set initial state from props, with fallbacks.
+    // This prevents a flicker and ensures data passed from grids is shown immediately.
+    setUserRating(movie.userScore || 0);
+    setIsLiked(movie.isLiked || false);
+    setIsWatchlisted(movie.isWatchlisted || false);
+    setIsWatched(movie.userScore > 0);
+
+    // Reset other non-essential states
     setHoverRating(0);
-    setUserRating(0);
     setRatingError('');
-    setIsLiked(false);
     setLikeError('');
-    setIsWatchlisted(false);
     setWatchlistError('');
-    setIsWatched(false);
     setWatchedError('');
     setReviewText('');
     setMyReview('');
     setAllReviews([]);
     setReviewError('');
     setShowReviewForm(false);
+
     const fetchAllData = async () => {
       if (!movie.id) return;
       if (isAuthenticated) {
-        let rating = 0;
-        if (movie.userScore) {
-          setUserRating(movie.userScore);
-          if (movie.userScore > 0) setIsWatched(true);
-          rating = movie.userScore;
-        } else {
-          rating = await fetchUserRating();
+        // If data wasn't available in props, fetch it as a fallback.
+        if (movie.userScore === undefined) {
+          fetchUserRating();
         }
-
-        if (movie.isLiked !== undefined) {
-          setIsLiked(movie.isLiked);
-        } else {
-          await fetchUserLikeStatus();
+        if (movie.isLiked === undefined) {
+          fetchUserLikeStatus();
         }
-
-        if (movie.isWatchlisted !== undefined) {
-          setIsWatchlisted(movie.isWatchlisted);
-        } else {
-          await fetchUserWatchlistStatus();
+        if (movie.isWatchlisted === undefined) {
+          fetchUserWatchlistStatus();
         }
-
-        if (rating === 0) await fetchUserWatchedStatus();
+        // Always fetch reviews as they are not passed as props
         await Promise.all([
           fetchMyReview(),
+          fetchAllReviews(),
         ]);
+      } else {
+        // For unauthenticated users, just get public reviews
+        await fetchAllReviews();
       }
-      await fetchAllReviews();
     };
+
     fetchAllData();
+
     document.body.classList.add('modal-is-open');
     return () => {
       document.body.classList.remove('modal-is-open');

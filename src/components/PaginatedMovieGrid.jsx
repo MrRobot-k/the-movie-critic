@@ -24,7 +24,19 @@ const renderStars = (score) => {
   );
 };
 
-const PaginatedMovieGrid = ({ endpoint = '', title, getMovieDetails, selectedMovie, onCloseDetails, query, clearSearch }) => {
+const PaginatedMovieGrid = ({ 
+  endpoint = '', 
+  title, 
+  getMovieDetails, 
+  selectedMovie, 
+  onCloseDetails, 
+  query, 
+  clearSearch, 
+  isAuthenticated, 
+  onRateMovie, 
+  onToggleLike, 
+  onToggleWatchlist 
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const isWatchedPage = endpoint === '/api/users/watched';
   const defaultSort = isWatchedPage ? 'user_rating.desc' : endpoint.startsWith('/api') ? 'release_date.desc' : 'vote_average.desc';
@@ -195,6 +207,10 @@ const PaginatedMovieGrid = ({ endpoint = '', title, getMovieDetails, selectedMov
         <MovieDetailsModal
           movie={selectedMovie}
           onClose={onCloseDetails}
+          isAuthenticated={isAuthenticated}
+          onRateMovie={onRateMovie}
+          onToggleLike={onToggleLike}
+          onToggleWatchlist={onToggleWatchlist}
         />
       )}
       <div className="d-flex justify-content-center mt-4">

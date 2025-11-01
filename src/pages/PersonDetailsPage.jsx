@@ -27,8 +27,8 @@ const PersonDetailsPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isA
         if (!creditsResponse.ok) throw new Error('Failed to fetch person credits.');
         const creditsData = await creditsResponse.json();
         let movieCredits = [];
-        if (role === 'director')  movieCredits = creditsData.crew.filter(movie => movie.job === 'Director');
-        else movieCredits = creditsData.cast;
+        if (role === 'director')  movieCredits = creditsData.crew.filter(movie => movie.job === 'Director' && movie.id);
+        else movieCredits = creditsData.cast.filter(movie => movie.id);
         setMovies(movieCredits.map(movie => ({ ...movie, media_type: 'movie' })));
       } catch (err) {
         setError(err.message);
@@ -41,8 +41,8 @@ const PersonDetailsPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isA
   }, [personId, role, isAuthenticated]);
   useEffect(() => {
     if (movies.length > 0 && userRatings.length > 0) {
-      const movieIds = new Set(movies.map(m => m.id.toString()));
-      const watchedIds = new Set(userRatings.map(r => r.mediaId.toString()));
+      const movieIds = new Set(movies.map(m => m.id?.toString()));
+      const watchedIds = new Set(userRatings.map(r => r.id?.toString()));
       const count = [...movieIds].filter(id => watchedIds.has(id)).length;
       setWatchedInListCount(count);
     }
