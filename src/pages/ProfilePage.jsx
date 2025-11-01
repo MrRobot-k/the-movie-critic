@@ -63,209 +63,99 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
   const fetchProfileData = async () => {
     setLoading(true);
     setError('');
-    const token = localStorage.getItem('token');
     if (!usernameToFetch) {
       setError('Nombre de usuario inválido.');
       setLoading(false);
       return;
     }
+
     try {
-      const userRes = await fetch(getApiUrl(`/api/users/username/${usernameToFetch}`));
-      if (!userRes.ok) {
-        if (userRes.status === 401 || userRes.status === 403) handleAuthError();
-        else {
-          setError('Usuario no encontrado.');
-          setLoading(false);
-        }
+      const res = await fetch(getApiUrl(`/api/users/profile-details/${usernameToFetch}`));
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) handleAuthError();
+        else setError('Usuario no encontrado.');
+        setLoading(false);
         return;
       }
-      const userData = await userRes.json();
-      setUserId(userData.id);
-      setUsername(userData.username);
-            setSlogan(userData.slogan || '');
-            setProfilePicture(userData.profilePicture ? userData.profilePicture : null);
-            setStats(prev => ({ ...prev, reviews: userData.reviewsCount || 0 }));
-      
-            const userId = userData.id;
-      let allUserRatings = [];
-      const ratingsRes = await fetch(getApiUrl(`/api/users/${userId}/ratings-with-scores`), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (ratingsRes.ok) {
-        const data = await ratingsRes.json();
-        allUserRatings = data.ratings || [];
-        setUserRatings(allUserRatings);
-        setStats(prev => ({ ...prev, watched: allUserRatings?.length || 0 }));
-      } else if (ratingsRes.status === 401 || ratingsRes.status === 403) handleAuthError();
-      const likesStatsRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (likesStatsRes.ok) {
-        const data = await likesStatsRes.json();
-        setStats(prev => ({ ...prev, likes: data.likedItems?.length || 0 }));
-      }
-      const watchlistStatsRes = await fetch(getApiUrl(`/api/users/${userId}/watchlist`), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (watchlistStatsRes.ok) {
-        const data = await watchlistStatsRes.json();
-        setStats(prev => ({ ...prev, watchlist: data.watchlistedMovies?.length || 0 }));
-      }
-      const listsRes = await fetch(getApiUrl(`/api/users/${userId}/lists`), {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (listsRes.ok) {
-        const data = await listsRes.json();
-        const lists = data.lists || [];
-        const detailedLists = await Promise.all(
-          lists.map(async (list) => {
+
+      const data = await res.json();
+
+      // Set states from the single aggregated response
+      setUserId(data.user.id);
+      setUsername(data.user.username);
+      setSlogan(data.user.slogan || '');
+      setProfilePicture(data.user.profilePicture || null);
+      setStats(data.stats);
+      setUserRatings(data.ratings || []);
+
+      const allUserRatings = data.ratings || [];
+      const likedItems = data.likedItems || [];
+
+      // Process lists (fetch posters)
+      const detailedListsPromises = (data.userLists || []).map(async (list) => {
+        const moviesWithDetails = await Promise.all(
+          (list.items || []).map(async (item) => {
             try {
-              const listDetailRes = await fetch(getApiUrl(`/api/lists/${list.id}`), {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              if (listDetailRes.ok) {
-                const ld = await listDetailRes.json();
-                const listData = ld.list || ld;
-                const moviesFromDetail = listData.items || [];
-                const moviesWithDetails = await Promise.all(
-                  moviesFromDetail.map(async (item) => {
-                    try {
-                      const movieRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-                      const movieDetail = await movieRes.json();
-                      return {
-                        ...movieDetail,
-                        id: item.mediaId,
-                        mediaType: item.mediaType,
-                        order: item.order,
-                        poster_path: movieDetail.poster_path
-                      };
-                    } catch (err) {
-                      return {
-                        id: item.mediaId,
-                        mediaType: item.mediaType,
-                        order: item.order,
-                        poster_path: null
-                      };
-                    }
-                  })
-                );
-                return {
-                  ...list,
-                  ...listData,
-                  movies: moviesWithDetails,
-                  movieCount: moviesWithDetails.length,
-                };
-              }
-            } catch (err) { }
-            return {
-              ...list,
-              movies: list.items || [],
-              movieCount: list.items?.length || 0,
-            };
+              const movieRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+              const movieDetail = await movieRes.json();
+              return { ...movieDetail, id: item.mediaId, mediaType: item.mediaType, order: item.order };
+            } catch (err) { return { id: item.mediaId, mediaType: item.mediaType, order: item.order, poster_path: null }; }
           })
         );
-        setUserLists(detailedLists);
-      } else if (listsRes.status === 401 || listsRes.status === 403) handleAuthError();
-      const likesRes = await fetch(getApiUrl(`/api/users/${userId}/likes`), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        return { ...list, movies: moviesWithDetails, movieCount: moviesWithDetails.length };
       });
-      const watchedRes = await fetch(getApiUrl(`/api/users/${userId}/watched`), {
-        headers: { 'Authorization': `Bearer ${token}` }
+
+      // Process top movies (fetch details)
+      const detailedTopMoviesPromises = (data.topMovies || []).map(async (item) => {
+        try {
+          const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
+          const detail = await detailRes.json();
+          const userRating = allUserRatings.find(r => r.mediaId === item.mediaId);
+          const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
+          return { ...detail, mediaType: item.mediaType, order: item.order, userScore: userRating ? userRating.score : null, isLiked };
+        } catch (error) { return null; }
       });
-      let likedItems = [];
-      if (likesRes.ok) {
-        const likesData = await likesRes.json();
-        likedItems = likesData.likedItems || [];
-      }
-      let watchedItems = [];
-      if (watchedRes.ok) {
-        const watchedData = await watchedRes.json();
-        watchedItems = watchedData.watchedMovies || [];
-      }
-      const topMoviesRes = await fetch(getApiUrl(`/api/users/${userId}/top-movies`), {
-        headers: { 'Authorization': `Bearer ${token}` },
+
+      // Process top directors (fetch details)
+      const detailedTopDirectorsPromises = (data.topDirectors || []).map(async (item) => {
+        try {
+          const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
+          const detail = await detailRes.json();
+          return { ...detail, order: item.order };
+        } catch (error) { return null; }
       });
-      if (topMoviesRes.ok) {
-        const data = await topMoviesRes.json();
-        const detailedTopMoviesPromises = data.topMovies?.map(async (item) => {
-          try {
-            const detailRes = await fetch(`${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`);
-            const detail = await detailRes.json();
-            const userRating = allUserRatings.find(r => r.mediaId === item.mediaId);
-            const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
-            const isWatched = watchedItems.some(w => w.mediaId === item.mediaId);
-            return {
-              ...detail,
-              mediaType: item.mediaType,
-              order: item.order,
-              userScore: userRating ? userRating.score : null,
-              isLiked: isLiked,
-              isWatched: isWatched
-            };
-          } catch (error) { return null; }
-        }) || [];
-        const movies = (await Promise.all(detailedTopMoviesPromises)).filter(movie => movie !== null);
-        movies.sort((a, b) => a.order - b.order);
-        setTopMovies(movies);
-      } else if (topMoviesRes.status === 401 || topMoviesRes.status === 403) handleAuthError();
-      const topDirectorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-directors`), {
-        headers: { 'Authorization': `Bearer ${token}` },
+
+      // Process top actors (already have details from backend)
+      const normalizedActors = (data.topActors || []).map(actor => ({ ...actor, id: actor.actorId })).sort((a, b) => a.order - b.order);
+      setTopActors(normalizedActors);
+
+      // Process reviews (fetch movie details)
+      const reviewsWithMovieDetailsPromises = (data.reviews || []).map(async (review) => {
+        try {
+          const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
+          const detail = await detailRes.json();
+          const rating = allUserRatings.find(r => r.mediaId === review.mediaId);
+          const hasLiked = likedItems.some(l => l.mediaId === review.mediaId);
+          return { ...review, movieDetails: detail, comment: review.reviewText, rating: rating ? rating.score : null, hasLiked };
+        } catch (error) { return { ...review, comment: review.reviewText }; }
       });
-      if (topDirectorsRes.ok) {
-        const data = await topDirectorsRes.json();
-        const detailedTopDirectorsPromises = data.topDirectors?.map(async (item) => {
-          try {
-            const detailRes = await fetch(`${BASE_URL}/person/${item.personId}?api_key=${API_KEY}&language=es-MX`);
-            const detail = await detailRes.json();
-            return { ...detail, order: item.order };
-          } catch (error) { return null; }
-        }) || [];
-        const directors = (await Promise.all(detailedTopDirectorsPromises)).filter(director => director !== null);
-        directors.sort((a, b) => a.order - b.order);
-        setTopDirectors(directors);
-      } else if (topDirectorsRes.status === 401 || topDirectorsRes.status === 403) handleAuthError();
-      const topActorsRes = await fetch(getApiUrl(`/api/users/${userId}/top-actors`), {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (topActorsRes.ok) {
-        const data = await topActorsRes.json();
-        const normalizedActors = data.map(actor => ({
-          ...actor,
-          id: actor.actorId,
-        }));
-        normalizedActors.sort((a, b) => a.order - b.order);
-        setTopActors(normalizedActors);
-      } else if (topActorsRes.status === 401 || topActorsRes.status === 403) handleAuthError();
-      const reviewsRes = await fetch(getApiUrl(`/api/users/${userId}/reviews`), {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (reviewsRes.ok) {
-        const data = await reviewsRes.json();
-        const reviewsWithMovieDetails = await Promise.all(
-          (data.reviews || []).map(async (review) => {
-            try {
-              const detailRes = await fetch(`${BASE_URL}/${review.mediaType}/${review.mediaId}?api_key=${API_KEY}&language=es-MX`);
-              const detail = await detailRes.json();
-              return {
-                ...review,
-                movieDetails: detail,
-                comment: review.comment ?? review.reviewText ?? review.content ?? '',
-                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
-                rating: review.rating ?? review.score ?? null,
-              };
-            } catch (error) {
-              return {
-                ...review,
-                comment: review.comment ?? review.reviewText ?? review.content ?? '',
-                hasLiked: review.hasLiked ?? review.liked ?? review.userLiked ?? false,
-                rating: review.rating ?? review.score ?? null,
-              };
-            }
-          })
-        );
-        setReviews(reviewsWithMovieDetails);
-      } else if (reviewsRes.status === 401 || reviewsRes.status === 403) handleAuthError();
+
+      // Await all detail fetching in parallel
+      const [detailedLists, detailedTopMovies, detailedTopDirectors, reviewsWithMovieDetails] = await Promise.all([
+        Promise.all(detailedListsPromises),
+        Promise.all(detailedTopMoviesPromises),
+        Promise.all(detailedTopDirectorsPromises),
+        Promise.all(reviewsWithMovieDetailsPromises),
+      ]);
+
+      setUserLists(detailedLists);
+      setTopMovies(detailedTopMovies.filter(m => m).sort((a, b) => a.order - b.order));
+      setTopDirectors(detailedTopDirectors.filter(d => d).sort((a, b) => a.order - b.order));
+      setReviews(reviewsWithMovieDetails);
+
     } catch (err) {
+      console.error('Error fetching profile data:', err);
       setError('Error al cargar los datos del perfil.');
     } finally {
       setLoading(false);

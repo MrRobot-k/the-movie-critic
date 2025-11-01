@@ -100,58 +100,39 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
-
 const authenticateTokenOptional = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) {
-    return next();
-  }
+  if (token == null) return next();
   jwt.verify(token, jwtSecret, (err, user) => {
-    if (err) {
-      // Invalid token, but we don't want to block the request
-      return next();
-    }
+    if (err) return next();
     req.user = user;
     next();
   });
 };
-
 app.get('/api/search', authenticateTokenOptional, async (req, res) => {
   try {
     const { query, page = 1 } = req.query;
     const userId = req.user ? req.user.id : null;
-
-    if (!query) {
-      return res.status(400).json({ error: 'Query parameter is required.' });
-    }
-
-    // Fetch search results from TMDB
+    if (!query) return res.status(400).json({ error: 'Query parameter is required.' });
     const tmdbUrl = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=${page}`;
     const tmdbResponse = await fetch(tmdbUrl);
-    if (!tmdbResponse.ok) {
-      throw new Error('Failed to fetch search results from TMDB.');
-    }
+    if (!tmdbResponse.ok) throw new Error('Failed to fetch search results from TMDB.');
     const tmdbData = await tmdbResponse.json();
-
     let results = tmdbData.results.map(item => ({
       ...item,
       mediaType: item.media_type || (item.title ? 'movie' : 'tv')
     }));
-
     if (userId) {
       const mediaIds = results.map(item => item.id);
-
       const [ratings, likes, watchlist] = await Promise.all([
         Rating.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId', 'score'] }),
         Like.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId'] }),
         Watchlist.findAll({ where: { userId, mediaId: mediaIds }, attributes: ['mediaId'] })
       ]);
-
       const ratingsMap = new Map(ratings.map(r => [r.mediaId, r.score]));
       const likesSet = new Set(likes.map(l => l.mediaId));
       const watchlistSet = new Set(watchlist.map(w => w.mediaId));
-
       results = results.map(item => ({
         ...item,
         userScore: ratingsMap.get(item.id) || null,
@@ -159,20 +140,17 @@ app.get('/api/search', authenticateTokenOptional, async (req, res) => {
         isWatched: watchlistSet.has(item.id)
       }));
     }
-
     res.status(200).json({
       results,
       total_pages: tmdbData.total_pages,
       total_results: tmdbData.total_results,
       page: tmdbData.page
     });
-
   } catch (error) {
     console.error('Error in /api/search:', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -200,18 +178,14 @@ app.put('/api/users/profile-picture', authenticateToken, upload.single('profileP
   try {
     const userId = req.user.id;
     if (!req.file) return res.status(400).json({ error: 'No se ha proporcionado ninguna imagen.' });
-
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-
     const blob = await put(req.file.originalname, req.file.buffer, {
       access: 'public',
       addRandomSuffix: true,
     });
-
     user.profilePicture = blob.url;
     await user.save();
-
     res.status(200).json({ message: 'Foto de perfil actualizada exitosamente.', profilePicture: user.profilePicture });
   } catch (error) {
     console.error('Error updating profile picture:', error);
@@ -284,16 +258,13 @@ app.get('/api/users/watched', authenticateToken, async (req, res) => {
       Like.findAll({ where: { userId }, attributes: ['mediaId'] }),
       Watchlist.findAll({ where: { userId }, attributes: ['mediaId'] })
     ]);
-
     const likesSet = new Set(likes.map(l => l.mediaId));
     const watchlistSet = new Set(watchlist.map(w => w.mediaId));
-
     const watchedMovies = await Promise.all(ratings.map(async (rating) => {
       try {
         const url = `https://api.themoviedb.org/3/${rating.mediaType}/${rating.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
         const response = await fetch(url);
         if (!response.ok) {
-          // Log the error for debugging, but don't let it break the entire Promise.all
           console.error(`Failed to fetch details for ${rating.mediaType} ID ${rating.mediaId}: ${response.statusText}`);
           return null;
         }
@@ -310,11 +281,7 @@ app.get('/api/users/watched', authenticateToken, async (req, res) => {
         return null;
       }
     }));
-
-    // Filter out any null results from failed fetches
     const validWatchedMovies = watchedMovies.filter(movie => movie !== null);
-
-
     res.status(200).json({ watchedMovies: validWatchedMovies, totalPages: 1 });
   } catch (error) {
     console.error('Error fetching watched movies:', error);
@@ -972,6 +939,55 @@ app.get('/api/users/search', async (req, res) => {
   } catch (error) {
     console.error('Error searching users:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+app.get('/api/users/profile-details/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({
+      where: { username },
+      attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    const userId = user.id;
+    const [reviewsCount, ratings, likes, watchlistItems, userLists, topMovies, topDirectors, topActors, reviews] = await Promise.all([
+      Review.count({ where: { userId } }),
+      Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
+      Like.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
+      Watchlist.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
+      List.findAll({ 
+        where: { userId }, 
+        include: [{ model: ListItem, as: 'items', attributes: ['mediaId', 'mediaType', 'order'] }],
+        order: [['createdAt', 'DESC']]
+      }),
+      TopMovie.findAll({ where: { userId }, order: [['order', 'ASC']] }),
+      TopDirector.findAll({ where: { userId }, order: [['order', 'ASC']] }),
+      UserTopActors.findAll({ where: { userId }, order: [['order', 'ASC']] }),
+      Review.findAll({ 
+        where: { userId }, 
+        order: [['createdAt', 'DESC']]
+      }),
+    ]);
+    res.status(200).json({
+      user,
+      stats: {
+        reviews: reviewsCount,
+        watched: ratings.length,
+        likes: likes.length,
+        watchlist: watchlistItems.length,
+      },
+      ratings,
+      userLists,
+      topMovies,
+      topDirectors,
+      topActors,
+      reviews,
+      likedItems: likes, // Pass full likes for isLiked checks on frontend
+    });
+
+  } catch (error) {
+    console.error('Error fetching aggregated profile data:', error);
+    res.status(500).json({ error: 'Error al cargar los datos del perfil.' });
   }
 });
 app.get('/api/users/username/:username', async (req, res) => {
