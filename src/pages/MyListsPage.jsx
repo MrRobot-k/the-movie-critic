@@ -132,15 +132,13 @@ const MyListsPage = () => {
                 <div className="card-body">
                   <Link
                     to={`/lista/${list.id}`}
-                    className="text-decoration-none d-flex align-items-center mb-2"
+                    className="text-decoration-none"
                   >
-                    {list.User.profilePicture ? (
-                      <img src={getApiUrl(list.User.profilePicture)} alt="Profile" className="rounded-circle me-2" style={{ width: '30px', height: '30px', objectFit: 'cover' }} />
-                    ) : (
-                      <img src="/placeholder-profile.svg" alt="Profile" className="rounded-circle me-2" style={{ width: '30px', height: '30px', objectFit: 'cover' }} />
-                    )}
                     <h5 className="card-title text-light mb-0">{list.name}</h5>
                   </Link>
+                  <div className="d-flex align-items-center mb-2">
+                    <span className="text-muted small">{list.User.username}</span>
+                  </div>
                   {list.description && (
                     <p className="card-text text-muted small">
                       {list.description.length > 100

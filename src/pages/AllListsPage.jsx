@@ -95,11 +95,6 @@ const AllListsPage = () => {
                     <h5 className="card-title text-light mb-2">{list.name}</h5>
                   </Link>
                   <div className="d-flex align-items-center mb-2">
-                    {list.User.profilePicture ? (
-                      <img src={getApiUrl(list.User.profilePicture)} alt="Profile" className="rounded-circle me-2" style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
-                    ) : (
-                      <img src="/placeholder-profile.svg" alt="Profile" className="rounded-circle me-2" style={{ width: '24px', height: '24px', objectFit: 'cover' }} />
-                    )}
                     <span className="text-muted small">{list.User.username}</span>
                   </div>
                   {list.description && (
