@@ -18,7 +18,7 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
 const upload = multer({ storage: multer.memoryStorage() });
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
