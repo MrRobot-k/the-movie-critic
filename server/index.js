@@ -983,6 +983,7 @@ app.get('/api/users/profile-details/:username', async (req, res) => {
       topActors,
       reviews,
       likedItems: likes, // Pass full likes for isLiked checks on frontend
+      watchlistItems, // Pass watchlist items for isWatchlisted checks
     });
 
   } catch (error) {

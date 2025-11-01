@@ -91,6 +91,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
 
       const allUserRatings = data.ratings || [];
       const likedItems = data.likedItems || [];
+      const watchlistItems = data.watchlistItems || [];
 
       // Process lists (fetch posters)
       const detailedListsPromises = (data.userLists || []).map(async (list) => {
@@ -113,7 +114,8 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
           const detail = await detailRes.json();
           const userRating = allUserRatings.find(r => r.mediaId === item.mediaId);
           const isLiked = likedItems.some(l => l.mediaId === item.mediaId);
-          return { ...detail, mediaType: item.mediaType, order: item.order, userScore: userRating ? userRating.score : null, isLiked };
+          const isWatchlisted = watchlistItems.some(w => w.mediaId === item.mediaId);
+          return { ...detail, mediaType: item.mediaType, order: item.order, userScore: userRating ? userRating.score : null, isLiked, isWatchlisted };
         } catch (error) { return null; }
       });
 
@@ -633,7 +635,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
                             rating.mediaId === movie.id && rating.mediaType === movie.mediaType
                           );
                           const userScore = userRating ? userRating.score : null;
-                          getMovieDetails(movie.id, movie.mediaType, userScore, topMovies, index);
+                          getMovieDetails(movie.id, movie.mediaType, userScore, movie.isLiked, movie.isWatchlisted, topMovies, index);
                         }}
                         style={{ cursor: 'pointer' }}
                       >
@@ -1026,6 +1028,7 @@ const ProfilePage = ({ getMovieDetails, selectedMovie, onCloseDetails, isAuthent
             onCloseDetails();
             refreshReviews();
           }}
+          isAuthenticated={isAuthenticated}
           onRateMovie={onRateMovie}
           onToggleLike={onToggleLike}
           onToggleWatchlist={onToggleWatchlist}
