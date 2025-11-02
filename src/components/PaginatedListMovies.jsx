@@ -23,48 +23,55 @@ const renderStars = (score) => {
 const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], likedItems = [], watchedItems = [], isNumbered = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState('custom'); // Default to custom order from list
-  const [fullMovieListDetails, setFullMovieListDetails] = useState([]); // Stores all fetched movie details
-  const [loading, setLoading] = true;
+  const [baseMovieDetails, setBaseMovieDetails] = useState([]); // Stores movie details from TMDB
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Effect to fetch all movie details when listItems changes
+  // Step 1: Fetch base movie details only when the list itself changes.
   useEffect(() => {
     const fetchAllMovieDetails = async () => {
+      if (!listItems || listItems.length === 0) {
+        setBaseMovieDetails([]);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const ratingsMap = new Map(userRatings.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
-        const likedMap = new Set(likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
-        const watchedMap = new Set(watchedItems.map(item => `${item.mediaId}-${item.mediaType}`));
-
         const movieDetailsPromises = listItems.map(async (item) => {
           const detailRes = await fetch(
             `${BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`
           );
-          if (!detailRes.ok) throw new Error(`Failed to fetch details for ${item.mediaId}`);
+          if (!detailRes.ok) return null; // Skip if fetch fails
           const detail = await detailRes.json();
-          const userScore = ratingsMap.get(`${item.mediaId}-${item.mediaType}`) || 0;
-          const isLiked = likedMap.has(`${item.mediaId}-${item.mediaType}`);
-          const isWatched = watchedMap.has(`${item.mediaId}-${item.mediaType}`);
-          return { ...detail, media_type: item.mediaType, id: item.mediaId, userScore, isLiked, isWatched, listOrder: item.order };
+          return { ...detail, media_type: item.mediaType, id: item.mediaId, listOrder: item.order };
         });
-        const fetchedMovies = await Promise.all(movieDetailsPromises);
-        setFullMovieListDetails(fetchedMovies);
+        const fetchedMovies = (await Promise.all(movieDetailsPromises)).filter(Boolean); // Filter out nulls
+        setBaseMovieDetails(fetchedMovies);
       } catch (err) {
         setError(err.message);
-        setFullMovieListDetails([]);
+        setBaseMovieDetails([]);
       } finally {
         setLoading(false);
       }
     };
 
-    if (listItems && listItems.length > 0) {
-      fetchAllMovieDetails();
-    } else {
-      setFullMovieListDetails([]);
-      setLoading(false);
-    }
-  }, [listItems, userRatings, likedItems, watchedItems]); // Re-fetch all details when the listItems prop changes
+    fetchAllMovieDetails();
+  }, [listItems]); // Only depends on listItems
+
+  // Step 2: Enrich movie details with user data using useMemo to prevent re-calculation on every render.
+  const fullMovieListDetails = useMemo(() => {
+    const ratingsMap = new Map(userRatings.map(r => [`${r.mediaId}-${r.mediaType}`, r.score]));
+    const likedMap = new Set(likedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+    const watchedMap = new Set(watchedItems.map(item => `${item.mediaId}-${item.mediaType}`));
+
+    return baseMovieDetails.map(movie => ({
+      ...movie,
+      userScore: ratingsMap.get(`${movie.id}-${movie.media_type}`) || 0,
+      isLiked: likedMap.has(`${movie.id}-${movie.media_type}`),
+      isWatched: watchedMap.has(`${movie.id}-${movie.media_type}`),
+    }));
+  }, [baseMovieDetails, userRatings, likedItems, watchedItems]);
 
   // Memoize the sorted full movie list based on sortOrder
   const sortedMovies = useMemo(() => {
@@ -137,17 +144,7 @@ const PaginatedListMovies = ({ listItems, getMovieDetails, userRatings = [], lik
                       #{movie.listOrder}
                     </div>
                   )}
-                  {(movie.userScore > 0 || movie.isLiked || movie.isWatched) && (
-                    <div className="position-absolute bottom-0 start-0 bg-dark text-white px-2 py-1 rounded-top-right d-flex align-items-center gap-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                      {movie.userScore > 0 && (
-                        <span className="d-flex align-items-center">
-                          {renderStars(movie.userScore)}
-                        </span>
-                      )}
-                      {movie.isLiked && <Heart size={12} fill="currentColor" className="text-danger" />}
-                      {movie.isWatched && <Eye size={12} fill="currentColor" className="text-success" />}
-                    </div>
-                  )}
+
                 </div>
               </div>
             </div>

@@ -9,9 +9,11 @@ const fetchMovies = async ({ endpoint, query, currentPage, sortBy, selectedGenre
   const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
   let url;
+  const isApiEndpoint = endpoint.startsWith('/api');
+
   if (endpoint === '/search/multi') {
     url = getApiUrl(`/api/search?query=${encodeURIComponent(query)}&page=${currentPage}`);
-  } else if (endpoint.startsWith('/api')) {
+  } else if (isApiEndpoint) {
     url = getApiUrl(endpoint);
   } else {
     let urlParams = `api_key=${API_KEY}&language=es-MX&page=${currentPage}`;
@@ -30,19 +32,51 @@ const fetchMovies = async ({ endpoint, query, currentPage, sortBy, selectedGenre
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      // No podemos usar useNavigate aquí, así que lanzamos un error específico
       throw new Error('Unauthorized');
     }
     const errorData = await response.json();
     throw new Error(errorData.error || "Error al obtener las películas.");
   }
 
-  const data = await response.json();
+  let data = await response.json();
 
-  // La lógica de procesamiento complejo que estaba en el componente se moverá aquí
-  // Por ahora, devolvemos los datos crudos para simplificar el primer paso
+  // If the data is from our custom backend, it needs to be enriched with TMDB details
+  if (isApiEndpoint && endpoint !== '/api/search') {
+    const itemsToEnrich = data.watchedMovies || data.results || [];
+    
+    const enrichedItems = await Promise.all(itemsToEnrich.map(async (item) => {
+      try {
+        const tmdbUrl = `${import.meta.env.VITE_BASE_URL}/${item.mediaType}/${item.mediaId}?api_key=${API_KEY}&language=es-MX`;
+        const tmdbResponse = await fetch(tmdbUrl);
+        if (!tmdbResponse.ok) return null; // Skip if TMDB fetch fails
+        const tmdbDetails = await tmdbResponse.json();
+
+        // Combine TMDB details with our backend data (like userScore)
+        return {
+          ...tmdbDetails,
+          id: item.mediaId, // Ensure the ID from our DB is the primary ID
+          mediaType: item.mediaType,
+          userScore: item.score, // For watched movies
+          isLiked: endpoint === '/api/users/likes' ? true : undefined, // Set isLiked for likes page
+          isWatchlisted: endpoint === '/api/users/watchlist' ? true : undefined, // Set isWatchlisted for watchlist page
+        };
+      } catch (error) {
+        console.error(`Error enriching item ${item.mediaId}:`, error);
+        return null; // Skip this item on error
+      }
+    }));
+
+    // Filter out any items that failed to enrich
+    const validItems = enrichedItems.filter(item => item !== null);
+
+    // Reconstruct the data object in the expected format
+    if (data.watchedMovies) {
+      data.watchedMovies = validItems;
+    } else {
+      data.results = validItems;
+    }
+  }
+
   return data;
 };
 

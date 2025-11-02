@@ -253,36 +253,12 @@ app.get('/api/media/:mediaId/rating', authenticateToken, async (req, res) => {
 app.get('/api/users/watched', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const [ratings, likes, watchlist] = await Promise.all([
-      Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
-      Like.findAll({ where: { userId }, attributes: ['mediaId'] }),
-      Watchlist.findAll({ where: { userId }, attributes: ['mediaId'] })
-    ]);
-    const likesSet = new Set(likes.map(l => l.mediaId));
-    const watchlistSet = new Set(watchlist.map(w => w.mediaId));
-    const watchedMovies = await Promise.all(ratings.map(async (rating) => {
-      try {
-        const url = `https://api.themoviedb.org/3/${rating.mediaType}/${rating.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          console.error(`Failed to fetch details for ${rating.mediaType} ID ${rating.mediaId}: ${response.statusText}`);
-          return null;
-        }
-        const details = await response.json();
-        return {
-          ...details,
-          userScore: rating.score,
-          mediaType: rating.mediaType,
-          isLiked: likesSet.has(rating.mediaId),
-          isWatchlisted: watchlistSet.has(rating.mediaId),
-        };
-      } catch (error) {
-        console.error(`Error fetching details for ${rating.mediaType} ID ${rating.mediaId}:`, error);
-        return null;
-      }
-    }));
-    const validWatchedMovies = watchedMovies.filter(movie => movie !== null);
-    res.status(200).json({ watchedMovies: validWatchedMovies, totalPages: 1 });
+    const ratings = await Rating.findAll({ 
+      where: { userId }, 
+      attributes: ['mediaId', 'mediaType', 'score', 'createdAt'],
+      order: [['createdAt', 'DESC']]
+    });
+    res.status(200).json({ watchedMovies: ratings });
   } catch (error) {
     console.error('Error fetching watched movies:', error);
     res.status(500).json({ error: error.message });
@@ -323,21 +299,10 @@ app.get('/api/users/likes', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const likes = await Like.findAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType'],
+      attributes: ['mediaId', 'mediaType', 'createdAt'],
+      order: [['createdAt', 'DESC']]
     });
-
-    const results = await Promise.all(likes.map(async (like) => {
-      const url = `https://api.themoviedb.org/3/${like.mediaType}/${like.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
-      const response = await fetch(url);
-      const details = await response.json();
-      return {
-        ...details,
-        isLiked: true,
-        mediaType: like.mediaType,
-      };
-    }));
-
-    res.status(200).json({ results, totalPages: 1 });
+    res.status(200).json({ results: likes });
   } catch (error) {
     console.error('Error fetching liked items:', error);
     res.status(500).json({ error: error.message });
@@ -414,21 +379,10 @@ app.get('/api/users/watchlist', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const watchlistItems = await Watchlist.findAll({
       where: { userId },
-      attributes: ['mediaId', 'mediaType'],
+      attributes: ['mediaId', 'mediaType', 'createdAt'],
+      order: [['createdAt', 'DESC']]
     });
-
-    const results = await Promise.all(watchlistItems.map(async (item) => {
-      const url = `https://api.themoviedb.org/3/${item.mediaType}/${item.mediaId}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
-      const response = await fetch(url);
-      const details = await response.json();
-      return {
-        ...details,
-        isWatchlisted: true,
-        mediaType: item.mediaType,
-      };
-    }));
-
-    res.status(200).json({ results, totalPages: 1 });
+    res.status(200).json({ results: watchlistItems });
   } catch (error) {
     console.error('Error fetching watchlist:', error);
     res.status(500).json({ error: error.message });
