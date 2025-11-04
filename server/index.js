@@ -898,46 +898,51 @@ app.get('/api/users/search', async (req, res) => {
 app.get('/api/users/profile-details/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const user = await User.findOne({
+    const userWithDetails = await User.findOne({
       where: { username },
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
+      include: [
+        { model: Review, attributes: ['id', 'mediaId', 'mediaType', 'reviewText', 'createdAt'] },
+        { model: Rating, attributes: ['mediaId', 'mediaType', 'score'] },
+        { model: Like, attributes: ['mediaId', 'mediaType'] },
+        { model: Watchlist, attributes: ['mediaId', 'mediaType'] },
+        {
+          model: List,
+          include: [{ model: ListItem, as: 'items', attributes: ['mediaId', 'mediaType', 'order'] }],
+          order: [['createdAt', 'DESC']]
+        },
+        { model: TopMovie, order: [['order', 'ASC']] },
+        { model: TopDirector, order: [['order', 'ASC']] },
+        { model: UserTopActors, order: [['order', 'ASC']] },
+      ]
     });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    const userId = user.id;
-    const [reviewsCount, ratings, likes, watchlistItems, userLists, topMovies, topDirectors, topActors, reviews] = await Promise.all([
-      Review.count({ where: { userId } }),
-      Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
-      Like.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
-      Watchlist.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
-      List.findAll({ 
-        where: { userId }, 
-        include: [{ model: ListItem, as: 'items', attributes: ['mediaId', 'mediaType', 'order'] }],
-        order: [['createdAt', 'DESC']]
-      }),
-      TopMovie.findAll({ where: { userId }, order: [['order', 'ASC']] }),
-      TopDirector.findAll({ where: { userId }, order: [['order', 'ASC']] }),
-      UserTopActors.findAll({ where: { userId }, order: [['order', 'ASC']] }),
-      Review.findAll({ 
-        where: { userId }, 
-        order: [['createdAt', 'DESC']]
-      }),
-    ]);
+
+    if (!userWithDetails) return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    const user = userWithDetails.get({ plain: true });
+
     res.status(200).json({
-      user,
-      stats: {
-        reviews: reviewsCount,
-        watched: ratings.length,
-        likes: likes.length,
-        watchlist: watchlistItems.length,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        slogan: user.slogan,
       },
-      ratings,
-      userLists,
-      topMovies,
-      topDirectors,
-      topActors,
-      reviews,
-      likedItems: likes, // Pass full likes for isLiked checks on frontend
-      watchlistItems, // Pass watchlist items for isWatchlisted checks
+      stats: {
+        reviews: user.Reviews.length,
+        watched: user.Ratings.length,
+        likes: user.Likes.length,
+        watchlist: user.Watchlists.length,
+      },
+      ratings: user.Ratings,
+      userLists: user.Lists,
+      topMovies: user.TopMovies,
+      topDirectors: user.TopDirectors,
+      topActors: user.UserTopActors,
+      reviews: user.Reviews,
+      likedItems: user.Likes,
+      watchlistItems: user.Watchlists,
     });
 
   } catch (error) {

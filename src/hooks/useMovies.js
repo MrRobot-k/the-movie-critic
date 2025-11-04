@@ -40,6 +40,21 @@ const fetchMovies = async ({ endpoint, query, currentPage, sortBy, selectedGenre
 
   let data = await response.json();
 
+  // Process data to ensure mediaType is consistently available
+  const processItems = (items, defaultMediaType = undefined) => {
+    return items.map(item => ({
+      ...item,
+      mediaType: item.mediaType || item.media_type || defaultMediaType,
+    }));
+  };
+
+  if (data.results) {
+    data.results = processItems(data.results, endpoint === '/discover/movie' ? 'movie' : undefined);
+  }
+  if (data.watchedMovies) {
+    data.watchedMovies = processItems(data.watchedMovies, 'movie'); // Assuming watched movies are always 'movie'
+  }
+
   // If the data is from our custom backend, it needs to be enriched with TMDB details
   if (isApiEndpoint && endpoint !== '/api/search') {
     const itemsToEnrich = data.watchedMovies || data.results || [];
