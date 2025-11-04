@@ -898,28 +898,34 @@ app.get('/api/users/search', async (req, res) => {
 app.get('/api/users/profile-details/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const userWithDetails = await User.findOne({
+
+    // 1. Fetch user first
+    const user = await User.findOne({
       where: { username },
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
-      include: [
-        { model: Review, attributes: ['id', 'mediaId', 'mediaType', 'reviewText', 'createdAt'] },
-        { model: Rating, attributes: ['mediaId', 'mediaType', 'score'] },
-        { model: Like, attributes: ['mediaId', 'mediaType'] },
-        { model: Watchlist, attributes: ['mediaId', 'mediaType'] },
-        {
-          model: List,
-          include: [{ model: ListItem, as: 'items', attributes: ['mediaId', 'mediaType', 'order'] }],
-          order: [['createdAt', 'DESC']]
-        },
-        { model: TopMovie, order: [['order', 'ASC']] },
-        { model: TopDirector, order: [['order', 'ASC']] },
-        { model: UserTopActors, order: [['order', 'ASC']] },
-      ]
     });
 
-    if (!userWithDetails) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
 
-    const user = userWithDetails.get({ plain: true });
+    const userId = user.id;
+
+    // 2. Fetch all data in parallel
+    const [reviews, ratings, likes, watchlistItems, userLists, topMovies, topDirectors, topActors] = await Promise.all([
+      Review.findAll({ where: { userId }, attributes: ['id', 'mediaId', 'mediaType', 'reviewText', 'createdAt'] }),
+      Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
+      Like.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
+      Watchlist.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType'] }),
+      List.findAll({
+        where: { userId },
+        include: [{ model: ListItem, as: 'items', attributes: ['mediaId', 'mediaType', 'order'] }],
+        order: [['createdAt', 'DESC']]
+      }),
+      TopMovie.findAll({ where: { userId }, order: [['order', 'ASC']] }),
+      TopDirector.findAll({ where: { userId }, order: [['order', 'ASC']] }),
+      UserTopActors.findAll({ where: { userId }, order: [['order', 'ASC']] })
+    ]);
 
     res.status(200).json({
       user: {
@@ -930,19 +936,19 @@ app.get('/api/users/profile-details/:username', async (req, res) => {
         slogan: user.slogan,
       },
       stats: {
-        reviews: user.Reviews.length,
-        watched: user.Ratings.length,
-        likes: user.Likes.length,
-        watchlist: user.Watchlists.length,
+        reviews: reviews.length,
+        watched: ratings.length,
+        likes: likes.length,
+        watchlist: watchlistItems.length,
       },
-      ratings: user.Ratings,
-      userLists: user.Lists,
-      topMovies: user.TopMovies,
-      topDirectors: user.TopDirectors,
-      topActors: user.UserTopActors,
-      reviews: user.Reviews,
-      likedItems: user.Likes,
-      watchlistItems: user.Watchlists,
+      ratings,
+      userLists,
+      topMovies,
+      topDirectors,
+      topActors,
+      reviews,
+      likedItems: likes,
+      watchlistItems,
     });
 
   } catch (error) {
