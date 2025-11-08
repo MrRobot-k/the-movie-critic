@@ -42,7 +42,7 @@ const PersonDetailsPage = ({ getMovieDetails, selectedMovie, onCloseDetails, isA
   useEffect(() => {
     if (movies.length > 0 && userRatings.length > 0) {
       const movieIds = new Set(movies.map(m => m.id?.toString()));
-      const watchedIds = new Set(userRatings.map(r => r.id?.toString()));
+      const watchedIds = new Set(userRatings.map(r => r.mediaId?.toString()));
       const count = [...movieIds].filter(id => watchedIds.has(id)).length;
       setWatchedInListCount(count);
     }
