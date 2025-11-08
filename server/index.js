@@ -47,6 +47,7 @@ const ListItem = require('./models/listItem.model')(sequelize);
 const TopMovie = require('./models/topMovie.model')(sequelize);
 const TopDirector = require('./models/topDirector.model')(sequelize);
 const UserTopActors = require('./models/userTopActors.model')(sequelize); // Define associations
+
 User.hasMany(Rating, { foreignKey: 'userId' });
 Rating.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(UserTopActors, { foreignKey: 'userId' });
@@ -978,7 +979,6 @@ app.get('/api/users/:userId', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     res.status(200).json(user);
   } catch (error) {
-    console.error('Error fetching user profile:', error);
     res.status(500).json({ error: error.message });
   }
 });

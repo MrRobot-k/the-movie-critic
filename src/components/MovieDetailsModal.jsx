@@ -456,35 +456,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
                 <div className="mt-5">
                   <hr className="border-secondary mb-4" />
                   <h4 className="mb-3">Reviews</h4>
-                  {isAuthenticated && (
-                    <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#1e2328' }}>
-                      <h6 className="mb-2">Tu Review</h6>
-                      {!showReviewForm && !myReview ? (
-                        <button className="btn btn-sm btn-outline-light" onClick={() => setShowReviewForm(true)}>Escribir Review</button>
-                      ) : !showReviewForm && myReview ? (
-                        <div>
-                          <p className="mb-2">{myReview}</p>
-                          <button className="btn btn-sm btn-outline-light" onClick={() => setShowReviewForm(true)}>Editar Review</button>
-                        </div>
-                      ) : (
-                        <div>
-                          <textarea
-                            className="form-control mb-2"
-                            rows="4"
-                            placeholder="Escribe tu review aquí..."
-                            value={reviewText}
-                            onChange={(e) => setReviewText(e.target.value)}
-                            style={{ backgroundColor: '#2c3440', color: '#fff', border: '1px solid #454d5d' }}
-                          />
-                          {reviewError && <div className="text-danger mb-2">{reviewError}</div>}
-                          <div className="d-flex gap-2">
-                            <button className="btn btn-sm btn-primary" onClick={handleSubmitReview}>Guardar Review</button>
-                            <button className="btn btn-sm btn-secondary" onClick={() => { setShowReviewForm(false); setReviewText(myReview); setReviewError(''); }}>Cancelar</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+
                   <div>
                     <h6 className="mb-3">Reviews de la comunidad ({allReviews.length})</h6>
                     {allReviews.length === 0 ? (
