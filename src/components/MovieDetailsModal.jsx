@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Heart, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Star, Heart, X, ChevronLeft, ChevronRight, Eye, ListPlus } from 'lucide-react';
 import { getApiUrl } from '../config/api';
+import AddToListModal from './AddToListModal';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
 const renderStars = (score) => {
@@ -34,6 +35,7 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
   const [allReviews, setAllReviews] = useState([]);
   const [reviewError, setReviewError] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showAddToListModal, setShowAddToListModal] = useState(false);
 
   // Obtener título y detalles según el tipo de contenido
   const getTitle = () => {
@@ -274,6 +276,13 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
       if (!newWatchedStatus && userRating > 0) fetchUserRating();
     }
   };
+  const handleAddToListClick = () => {
+    if (!isAuthenticated) {
+      // Opcional: mostrar un error si el usuario no está autenticado
+      return;
+    }
+    setShowAddToListModal(true);
+  };
   const getProfileImageUrl = (profilePicture) => {
     if (!profilePicture) {
       return '/placeholder-profile.svg';
@@ -393,6 +402,11 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
                       onClick={handleWatchlistClick}
                       style={{ cursor: isAuthenticated ? 'pointer' : 'not-allowed' }}
                     />
+                     <ListPlus
+                      size={28}
+                      onClick={handleAddToListClick}
+                      style={{ cursor: isAuthenticated ? 'pointer' : 'not-allowed', color: '#e4e5e9' }}
+                    />
                   </div>
                   {likeError && <div className="text-danger mt-2">{likeError}</div>}
                   {watchlistError && <div className="text-danger mt-2">{watchlistError}</div>}
@@ -511,6 +525,18 @@ const MovieDetailsModal = ({ movie, onClose, isAuthenticated, onRateMovie, onTog
           </div>
         </div>
       </div>
+      {showAddToListModal && (
+        <AddToListModal
+          isOpen={showAddToListModal}
+          onClose={() => setShowAddToListModal(false)}
+          mediaId={movie.id}
+          mediaType={movie.media_type}
+          onAddToList={() => {
+            // Opcional: podrías querer mostrar una notificación de éxito aquí
+            setShowAddToListModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

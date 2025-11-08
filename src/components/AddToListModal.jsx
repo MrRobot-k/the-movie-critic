@@ -13,8 +13,10 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
   }, [isOpen]);
   const fetchUserLists = async () => {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    if (!token || !userId) return;
     try {
-      const response = await fetch(getApiUrl('/api/users/lists'), {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/lists`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -150,8 +152,8 @@ const AddToListModal = ({ isOpen, onClose, mediaId, mediaType, onAddToList }) =>
   };
   if (!isOpen) return null;
   return (
-    <div className="modal-backdrop-dark" onClick={onClose}>
-      <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent' }}>
+    <div className="modal-backdrop-dark" onClick={onClose} style={{ zIndex: 1060 }}>
+      <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'transparent', zIndex: 1061 }}>
         <div className="modal-dialog modal-dialog-centered modal-md" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content modal-content-custom">
             <div className="modal-header border-secondary">

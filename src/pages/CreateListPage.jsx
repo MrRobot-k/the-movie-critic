@@ -342,7 +342,7 @@ const CreateListPage = () => {
         ) : (
           <div className="row g-1 poster-grid create-list-poster-grid">
             {movies.map((movie, index) => (
-              <div key={`${movie.id}-${index}`} className="col-3 col-md-2 col-lg-1 mb-1">
+              <div key={`${movie.id}-${index}`} className="col-4 col-md-3 col-lg-2 mb-2">
                 <div className="movie-card">
                   <img
                     src={
