@@ -898,20 +898,12 @@ app.get('/api/users/search', async (req, res) => {
 app.get('/api/users/profile-details/:username', async (req, res) => {
   try {
     const { username } = req.params;
-
-    // 1. Fetch user first
     const user = await User.findOne({
       where: { username },
       attributes: ['id', 'username', 'email', 'profilePicture', 'slogan'],
     });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
-
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado.' });
     const userId = user.id;
-
-    // 2. Fetch all data in parallel
     const [reviews, ratings, likes, watchlistItems, userLists, topMovies, topDirectors, topActors] = await Promise.all([
       Review.findAll({ where: { userId }, attributes: ['id', 'mediaId', 'mediaType', 'reviewText', 'createdAt'] }),
       Rating.findAll({ where: { userId }, attributes: ['mediaId', 'mediaType', 'score'] }),
@@ -926,7 +918,6 @@ app.get('/api/users/profile-details/:username', async (req, res) => {
       TopDirector.findAll({ where: { userId }, order: [['order', 'ASC']] }),
       UserTopActors.findAll({ where: { userId }, order: [['order', 'ASC']] })
     ]);
-
     res.status(200).json({
       user: {
         id: user.id,
@@ -950,7 +941,6 @@ app.get('/api/users/profile-details/:username', async (req, res) => {
       likedItems: likes,
       watchlistItems,
     });
-
   } catch (error) {
     console.error('Error fetching aggregated profile data:', error);
     res.status(500).json({ error: 'Error al cargar los datos del perfil.' });
